@@ -51,6 +51,7 @@ dd{margin:0;font-family:var(--mono);font-size:.9rem;word-break:break-all;font-va
 .bar i{display:block;height:100%;background:var(--accent)}
 .fill{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .fill label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
+.prod{display:grid;gap:2px}.prod b{font-family:var(--display);font-size:1.15rem;line-height:1.25}
 .raw{font-family:var(--mono);font-size:.78rem;color:var(--muted);word-break:break-all}
 .example{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
 .settings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -88,6 +89,18 @@ textarea{width:100%;box-sizing:border-box;font-family:var(--mono);font-size:.75r
 
   <section class="panel" id="result" aria-live="polite"></section>
 
+  <section class="panel" aria-label="Product list">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="label">Product list (<span id="prodCount">0</span> items)</span>
+      <div class="btns">
+        <label class="filebtn">Import CSV<input id="prodFile" type="file" accept=".csv,text/csv,text/plain"></label>
+        <button type="button" id="prodCopy">Copy list</button>
+      </div>
+    </div>
+    <p class="msg" id="prodMsg">Matches the scanned GTIN to a product name. Import a CSV with a header row containing <b>GTIN</b> (or Barcode) and <b>Description</b> (or Product name). Unknown items can be named once from the result card and are remembered on this device.</p>
+    <textarea id="prodBox" rows="4" hidden readonly aria-label="Product list CSV"></textarea>
+  </section>
+
   <section class="panel" aria-label="Acceptance rules">
     <span class="label">Acceptance rules</span>
     <div class="settings">
@@ -107,7 +120,7 @@ textarea{width:100%;box-sizing:border-box;font-family:var(--mono);font-size:.75r
       </div>
     </div>
     <div class="tablewrap"><table>
-      <thead><tr><th>Time</th><th>GTIN</th><th>Batch</th><th>Expiry</th><th>Days</th><th>Status</th></tr></thead>
+      <thead><tr><th>Time</th><th>Product</th><th>GTIN</th><th>Batch</th><th>Expiry</th><th>Days</th><th>Status</th></tr></thead>
       <tbody id="logBody"></tbody>
     </table></div>
     <p class="msg" id="clearConfirm" hidden>Clear all entries? <button type="button" id="clearYes">Yes, clear</button> <button type="button" id="clearNo">Cancel</button></p>
@@ -217,6 +230,59 @@ const savedRules = store.get("sls_rules", null);
 if (savedRules){ $("minPct").value=savedRules.minPct; $("nearMonths").value=savedRules.nearMonths; }
 ["minPct","nearMonths"].forEach(id=>$(id).addEventListener("input",()=>{store.set("sls_rules",rules()); render();}));
 
+/* ---------- Product list: shared products.csv in the repo + this device's own entries ---------- */
+const normG = g => { const d=String(g||"").replace(/\D/g,""); return d.length>=8 && d.length<=14 ? d.padStart(14,"0") : ""; };
+let baseProducts = {}, localProducts = store.get("sls_products", {});
+const product = g => { const k=normG(g); return k ? (localProducts[k] || baseProducts[k] || null) : null; };
+function parseCSV(text){
+  const rows=[]; let row=[], f="", q=false;
+  const d = (text.split("\n")[0].split(";").length > text.split("\n")[0].split(",").length) ? ";" : ",";
+  for (let i=0;i<text.length;i++){
+    const c=text[i];
+    if (q){ if (c==='"'){ if (text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if (c==='"') q=true;
+    else if (c===d){ row.push(f); f=""; }
+    else if (c==="\n"){ row.push(f); rows.push(row); row=[]; f=""; }
+    else if (c!=="\r") f+=c;
+  }
+  if (f||row.length){ row.push(f); rows.push(row); }
+  return rows.filter(r=>r.some(x=>x.trim()));
+}
+function productsFromCSV(text){
+  const rows=parseCSV(text.replace(/^﻿/,"")); if (!rows.length) return {};
+  const head=rows[0].map(x=>x.trim().toLowerCase());
+  let gi=head.findIndex(x=>/gtin|barcode|ean|upc/.test(x));
+  let di=head.findIndex(x=>/desc/.test(x)); if (di<0) di=head.findIndex(x=>/name|product/.test(x));
+  const pi=head.findIndex(x=>/pack|uom|unit/.test(x)), ci=head.findIndex(x=>/item.?code|sku|^code$/.test(x));
+  let start=1; if (gi<0 || di<0){ gi=0; di=1; start = normG(rows[0][0]) ? 0 : 1; }
+  const out={};
+  for (const r of rows.slice(start)){
+    const k=normG(r[gi]); const name=(r[di]||"").trim(); if (!k||!name) continue;
+    out[k]={d:name, p:pi>=0?(r[pi]||"").trim():"", c:ci>=0?(r[ci]||"").trim():""};
+  }
+  return out;
+}
+function prodCount(){ $("prodCount").textContent = Object.keys({...baseProducts,...localProducts}).length; }
+fetch("products.csv",{cache:"no-store"}).then(r=>r.ok?r.text():"").then(t=>{
+  if (!t) return; baseProducts=productsFromCSV(t); prodCount(); render(); renderLog();
+}).catch(()=>{});
+$("prodFile").addEventListener("change", async e=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  try{ const add=productsFromCSV(await f.text()); const n=Object.keys(add).length;
+    if (!n) throw 0;
+    localProducts={...localProducts,...add}; store.set("sls_products",localProducts); prodCount(); render();
+    $("prodMsg").textContent=`Imported ${n} products from ${f.name}.`; $("prodMsg").className="msg";
+  }catch{ $("prodMsg").textContent="No products found. The file needs a GTIN (or Barcode) column and a Description (or Product name) column."; $("prodMsg").className="msg err"; }
+  finally{ e.target.value=""; }
+});
+$("prodCopy").onclick=()=>{
+  const all={...baseProducts,...localProducts}, q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const t=["GTIN,Description,Pack,Item code",...Object.entries(all).map(([g,v])=>[g,v.d,v.p,v.c].map(q).join(","))].join("\n");
+  $("prodBox").value=t; $("prodBox").hidden=false;
+  navigator.clipboard?.writeText(t).then(()=>{$("prodCopy").textContent="Copied";setTimeout(()=>$("prodCopy").textContent="Copy list",1500)}).catch(()=>$("prodBox").select());
+};
+prodCount();
+
 function handle(raw, format, example=false){
   const c = classify(raw, format);
   const exp = c.ais["17"] ? gs1Date(c.ais["17"]) : null;
@@ -230,7 +296,7 @@ function handle(raw, format, example=false){
 function addToLog(){
   if (!current || current.logged) return;
   const ev = evaluate(current.exp, current.mfg, rules());
-  log.unshift({t:new Date().toISOString(), kind:current.kind, gtin:current.ais["01"]||"", batch:current.ais["10"]||"",
+  log.unshift({t:new Date().toISOString(), desc:product(current.ais["01"])?.d||"", kind:current.kind, gtin:current.ais["01"]||"", batch:current.ais["10"]||"",
     serial:current.ais["21"]||"", mfg:isoD(current.mfg), exp:isoD(current.exp), days:ev.days??"",
     pct: ev.pct==null?"":ev.pct.toFixed(0), status:ev.label, raw:current.raw.replace(/\u001d/g,"<GS>")});
   current.logged = true; store.set("sls_log", log); renderLog(); render();
@@ -241,7 +307,7 @@ function render(){
   if (!current){ el.innerHTML = `<span class="label">Result</span><p class="msg">Scan a pack to see its expiry and remaining shelf life.</p>`; return; }
   const a = current.ais, ev = evaluate(current.exp, current.mfg, rules());
   const cls = {ok:"s-ok",warn:"s-warn",bad:"s-bad",none:"s-none"}[ev.status];
-  const gt = a["01"];
+  const gt = a["01"], prod = product(gt);
   const rows = [
     ["Type", current.kind],
     gt && ["GTIN", gt + (gtinCheckOk(gt)?"":"  ⚠ check digit fails")],
@@ -254,6 +320,8 @@ function render(){
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
       <span class="label">Result</span>${current.example?'<span class="example">Example scan</span>':""}
     </div>
+    ${gt ? (prod ? `<div class="prod"><b>${esc(prod.d)}</b>${prod.p||prod.c?`<span class="msg">${esc([prod.p,prod.c&&"Item "+prod.c].filter(Boolean).join(" · "))}</span>`:""}</div>`
+      : `<form class="manual" id="nameForm"><input id="nameIn" placeholder="Unknown product. Type its name to remember it" aria-label="Product name"><button type="submit">Save name</button></form>`) : ""}
     <div class="status ${cls}"><span>${esc(ev.label)}</span>${ev.days!=null?`<small>${ev.days<0?Math.abs(ev.days)+" days ago":ev.days+" days left"}</small>`:""}</div>
     ${ev.days!=null?`<div class="big">
       <div><span class="label">Days left</span><b>${ev.days}</b></div>
@@ -271,6 +339,9 @@ function render(){
   $("expIn").addEventListener("change",e=>{current.exp=e.target.value?new Date(e.target.value+"T00:00"):null; current.logged=false; render();});
   $("mfgIn").addEventListener("change",e=>{current.mfg=e.target.value?new Date(e.target.value+"T00:00"):null; current.logged=false; render();});
   $("logBtn")?.addEventListener("click", ()=>{ current.example=false; addToLog(); });
+  $("nameForm")?.addEventListener("submit", e=>{ e.preventDefault(); const v=$("nameIn").value.trim(); if(!v) return;
+    localProducts[normG(gt)]={d:v,p:"",c:""}; store.set("sls_products",localProducts); prodCount();
+    log.forEach(r=>{ if(normG(r.gtin)===normG(gt) && !r.desc) r.desc=v; }); store.set("sls_log",log); renderLog(); render(); });
 }
 
 function renderLog(){
@@ -278,16 +349,16 @@ function renderLog(){
   const pc = s => s==="Acceptable"?"s-ok":s==="Near expiry"?"s-warn":/Expired|Below/.test(s)?"s-bad":"s-none";
   $("logBody").innerHTML = log.length ? log.map(r=>`<tr>
     <td>${new Date(r.t).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</td>
-    <td class="mono">${esc(r.gtin)}</td><td class="mono">${esc(r.batch)}</td><td class="mono">${esc(r.exp)}</td>
+    <td>${esc(r.desc || product(r.gtin)?.d || "—")}</td><td class="mono">${esc(r.gtin)}</td><td class="mono">${esc(r.batch)}</td><td class="mono">${esc(r.exp)}</td>
     <td>${esc(r.days)}</td><td><span class="pill ${pc(r.status)}">${esc(r.status)}</span></td></tr>`).join("")
-    : `<tr><td colspan="6" class="msg">No scans yet. Each scan with an expiry is saved here.</td></tr>`;
+    : `<tr><td colspan="7" class="msg">No scans yet. Each scan with an expiry is saved here.</td></tr>`;
 }
 
 function csv(){
-  const cols=["t","kind","gtin","batch","serial","mfg","exp","days","pct","status","raw"];
+  const cols=["t","desc","kind","gtin","batch","serial","mfg","exp","days","pct","status","raw"];
   const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
-  return [ ["Time","Type","GTIN","Batch","Serial","Manufacture","Expiry","Days left","% remaining","Status","Raw"].join(","),
-    ...log.map(r=>cols.map(c=>q(r[c])).join(",")) ].join("\n");
+  return [ ["Time","Product","Type","GTIN","Batch","Serial","Manufacture","Expiry","Days left","% remaining","Status","Raw"].join(","),
+    ...log.map(r=>cols.map(c=>q(c==="desc"?(r.desc||product(r.gtin)?.d||""):r[c])).join(",")) ].join("\n");
 }
 $("dlBtn").onclick = ()=>{
   try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv()],{type:"text/csv"}));
