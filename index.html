@@ -2,199 +2,420 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="description" content="Scan a pack and see how much shelf life it has left.">
 <title>Shelf Life Scanner</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600&display=swap">
 <style>
-/* Layout: single column on phones (one hand in a warehouse); two columns on tablets/desktops with the scan log spanning full width. */
+/* Design: one clear job per screen. Check a pack (scan or type) → get a verdict.
+   Phones: bottom tab bar (Check / History), settings in a sheet. ≥900px: Check and History side by side. */
 :root{
-  --bg:#f3f5f4; --surface:#ffffff; --ink:#14201c; --muted:#5b6b65; --line:#d6dedb;
-  --accent:#0e6b5c; --accent-ink:#ffffff;
-  --ok:#1d7a3e; --ok-bg:#e3f3e8; --warn:#9a5b00; --warn-bg:#fdf0d8; --bad:#b3261e; --bad-bg:#fbe4e2;
-  --display:"Archivo",system-ui,sans-serif; --body:"Source Sans 3",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --bg:#f2f2f7; --surface:#ffffff; --fill:#f2f2f7; --fill2:#e6e6eb; --ink:#1d1d1f; --muted:#6e6e73; --faint:#8a8a8e; --line:rgba(60,60,67,.16);
+  --accent:#0a7d6c; --accent-ink:#ffffff; --accent-soft:rgba(10,125,108,.10);
+  --ok:#17803f; --ok-bg:#e2f5e8; --ok-ring:#34c759;
+  --warn:#9f5000; --warn-bg:#fff1db; --warn-ring:#ff9f0a;
+  --bad:#c3001a; --bad-bg:#ffe6e8; --bad-ring:#ff3b30;
+  --none-ring:#c7c7cc; --seg-on:#ffffff; --toast:rgba(28,28,30,.94);
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.05);
+  --r-lg:20px; --r:14px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#0f1513; --surface:#18211e; --ink:#e6ece9; --muted:#97a6a0; --line:#2b3733;
-  --accent:#3fb8a2; --accent-ink:#06201b;
-  --ok:#6fd38f; --ok-bg:#16301f; --warn:#f2b84b; --warn-bg:#33270f; --bad:#ff8a80; --bad-bg:#3a1714; color-scheme:dark}}
+  --bg:#000000; --surface:#1c1c1e; --fill:#2c2c2e; --fill2:#3a3a3c; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(84,84,88,.55);
+  --accent:#3cc9b0; --accent-ink:#00201a; --accent-soft:rgba(60,201,176,.15);
+  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158;
+  --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a;
+  --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
+  --none-ring:#48484a; --seg-on:#636366; --toast:rgba(58,58,60,.96); --shadow:none; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0f1513; --surface:#18211e; --ink:#e6ece9; --muted:#97a6a0; --line:#2b3733;
-  --accent:#3fb8a2; --accent-ink:#06201b;
-  --ok:#6fd38f; --ok-bg:#16301f; --warn:#f2b84b; --warn-bg:#33270f; --bad:#ff8a80; --bad-bg:#3a1714; color-scheme:dark}
-html,body{background:var(--bg);color:var(--ink)}
-body{font-family:var(--body);font-size:16px;line-height:1.45;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 40px}
-.wrap{max-width:1180px;margin:0 auto;display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+  --bg:#000000; --surface:#1c1c1e; --fill:#2c2c2e; --fill2:#3a3a3c; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(84,84,88,.55);
+  --accent:#3cc9b0; --accent-ink:#00201a; --accent-soft:rgba(60,201,176,.15);
+  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158;
+  --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a;
+  --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
+  --none-ring:#48484a; --seg-on:#636366; --toast:rgba(58,58,60,.96); --shadow:none; color-scheme:dark}
+
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
-header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
-h1{font-family:var(--display);font-weight:800;font-size:1.5rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
-.sub{color:var(--muted);font-size:.9rem;margin:0}
-.label{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:12px;min-width:0}
-#reader{width:100%;min-height:0;border-radius:8px;overflow:hidden;background:#000}
-#reader video{border-radius:8px;display:block;width:100%;max-height:60vh;object-fit:cover}
-.btns{display:flex;gap:8px;flex-wrap:wrap}
-button,.filebtn{font-family:var(--display);font-weight:700;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;min-height:44px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
-button.primary,.filebtn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
-button:focus-visible,.filebtn:focus-within,input:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.filebtn input{position:absolute;opacity:0;width:1px;height:1px}
-.msg{font-size:.9rem;color:var(--muted);margin:0}
-.msg.err{color:var(--bad)}
-.manual{display:flex;gap:8px;flex-wrap:wrap}
-.manual input{flex:1 1 200px;min-width:0}
-input,select{font-family:var(--mono);font-size:1rem;min-height:44px;width:100%;min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
-.status{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-radius:8px;font-family:var(--display);font-weight:800;font-size:1.15rem}
-.status small{font-family:var(--body);font-weight:600;font-size:.85rem}
-.s-ok{background:var(--ok-bg);color:var(--ok)} .s-warn{background:var(--warn-bg);color:var(--warn)} .s-bad{background:var(--bad-bg);color:var(--bad)} .s-none{background:var(--bg);color:var(--muted)}
-.big{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.big div{display:grid;gap:2px}
-.big b{font-family:var(--display);font-size:clamp(1.2rem,5vw,1.6rem);font-variant-numeric:tabular-nums;line-height:1.1}
-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}
-dt{color:var(--muted);font-size:.85rem}
-dd{margin:0;font-family:var(--mono);font-size:.9rem;word-break:break-all;font-variant-numeric:tabular-nums}
-.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--accent)}
-.fill{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
-.fill label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
-.prod{display:grid;gap:2px}.prod b{font-family:var(--display);font-size:1.15rem;line-height:1.25}
-.raw{font-family:var(--mono);font-size:.78rem;color:var(--muted);word-break:break-all}
-.example{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warn)}
-.settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px}
-.settings label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
-.tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;font-size:.85rem;font-variant-numeric:tabular-nums}
-th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
-th{font-weight:600;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em}
-td.mono{font-family:var(--mono)}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-weight:700;font-size:.75rem}
-textarea{width:100%;box-sizing:border-box;font-family:var(--mono);font-size:.75rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px}
-/* Entry mode switch */
-.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--line);border-radius:10px}
-.seg button{border:0;background:transparent;color:var(--muted);font-size:.9rem;padding:8px 10px}
-.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
-/* Manual date entry */
-.entry{display:grid;gap:10px}
-.entry .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-.entry label{display:grid;gap:4px;font-size:.85rem;color:var(--muted);min-width:0}
-.entry .req{color:var(--bad)}
-.dateRow{display:flex;gap:6px}
-.dateRow input[type=text]{flex:1}
-.dateRow .pick{position:relative;flex:0 0 44px;padding:0;overflow:hidden}
-.dateRow .pick input{position:absolute;inset:0;opacity:0;cursor:pointer;min-height:0;padding:0;border:0}
-.hint{font-size:.8rem;color:var(--muted);min-height:1.1em}
-.hint.ok{color:var(--ok)} .hint.err{color:var(--bad)}
-/* Tablet / desktop: two columns, log spans both */
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.4;-webkit-font-smoothing:antialiased;
+  padding:0 max(16px,env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+h1,h2,h3,p{margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Header */
+.top{max-width:1120px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:calc(20px + env(safe-area-inset-top)) 0 18px}
+.eyebrow{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+h1{font-size:34px;font-weight:700;letter-spacing:-.025em;line-height:1.1}
+.icon-btn{border:0;background:var(--surface);box-shadow:var(--shadow);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--accent);flex:none}
+.icon-btn:active{transform:scale(.94)}
+
+/* Layout */
+.layout{max-width:1120px;margin:0 auto;display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
+.view{display:grid;gap:14px;align-content:start;min-width:0}
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+@media (max-width:899px){
+  body[data-view="history"] #viewCheck, body[data-view="check"] #viewHistory{display:none}
+}
 @media (min-width:900px){
-  .wrap{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
-  header,.span2{grid-column:1/-1}
-  #result{position:sticky;top:16px}
+  body{padding-bottom:48px}
+  .layout{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
+  .tabbar{display:none!important}
+  .toast{bottom:28px!important}
+  .h-title{display:flex!important}
 }
-@media (min-width:1280px){ .wrap{grid-template-columns:minmax(0,5fr) minmax(0,4fr)} }
-/* Phones: full-width thumb buttons, log rows become cards */
-@media (max-width:520px){
-  h1{font-size:1.3rem}
-  .btns>button,.btns>.filebtn{flex:1 1 auto}
-  .status{flex-wrap:wrap}
-}
-@media (max-width:639px){
-  table.log thead{display:none}
-  table.log,table.log tbody,table.log tr,table.log td{display:block;width:100%}
-  table.log tr{border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-bottom:8px}
-  table.log td{display:flex;justify-content:space-between;gap:12px;border:0;padding:3px 0;white-space:normal;text-align:right;word-break:break-word}
-  table.log td::before{content:attr(data-label);color:var(--muted);font-family:var(--body);font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;text-align:left;flex:none}
-  table.log td.empty{display:block;text-align:left}
-}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Segmented control */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--fill2);border-radius:11px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;font-size:14px;font-weight:600;padding:6px 10px;min-height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s}
+.seg button .ic{width:18px;height:18px}
+.seg button[aria-pressed="true"]{background:var(--seg-on);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
+
+/* Viewfinder */
+.vf{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#0b0f0e;aspect-ratio:4/3;max-height:52vh;width:100%}
+.vf.on{aspect-ratio:auto;max-height:none}
+.vf:not(.on) #reader{display:none}
+#reader{width:100%;background:#000}
+#reader video{display:block;width:100%!important;max-height:62vh;object-fit:cover}
+body[data-mode="manual"] .vf:not(.on){display:none}
+.vf-idle{position:absolute;inset:0;width:100%;border:0;cursor:pointer;color:#fff;display:grid;place-items:center;align-content:center;gap:6px;text-align:center;padding:16px;
+  background:radial-gradient(120% 90% at 50% 0%,#1f3a34 0%,#0b0f0e 70%)}
+.vf.on .vf-idle{display:none}
+.brackets{width:min(58%,260px);height:auto;color:rgba(255,255,255,.92);margin-bottom:8px;animation:breathe 2.8s ease-in-out infinite}
+.brackets .beam{stroke:var(--ok-ring);stroke-width:2;opacity:.9;animation:beam 2.8s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.035)}}
+@keyframes beam{0%,100%{transform:translateY(-22px);opacity:0}20%,80%{opacity:.9}50%{transform:translateY(22px)}}
+.vf-idle b{font-size:19px;font-weight:600}
+.vf-idle span{font-size:13px;opacity:.7}
+.vf-close{position:absolute;top:10px;right:10px;z-index:3;width:36px;height:36px;border-radius:50%;border:0;display:none;place-items:center;cursor:pointer;color:#fff;background:rgba(0,0,0,.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.vf.on .vf-close{display:grid}
+
+/* Buttons */
+.btn{position:relative;appearance:none;border:0;font-size:17px;font-weight:600;border-radius:14px;min-height:50px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:var(--surface);color:var(--accent);box-shadow:var(--shadow);text-decoration:none;transition:transform .12s ease,opacity .2s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.97)}
+.btn[disabled]{opacity:.4;cursor:default;transform:none}
+.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.btn.tinted{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+.btn.plain{background:transparent;box-shadow:none;min-height:44px;padding:0 8px;font-weight:500}
+.btn.small{min-height:38px;font-size:15px;border-radius:11px;padding:0 14px}
+.btn.danger{color:var(--bad)}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.btn:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
+.actions{display:grid;grid-template-columns:1.6fr 1fr;gap:10px}
+.note{font-size:15px;color:var(--muted);text-align:center;padding:0 8px}
+.note.err{color:var(--bad)}
+.foot-note{display:flex;gap:6px;align-items:center;justify-content:center;font-size:13px;color:var(--faint);padding:4px 0}
+.foot-note .ic{width:15px;height:15px}
+
+/* Inputs */
+input{font:inherit;font-size:17px;color:var(--ink);background:var(--fill);border:0;border-radius:11px;padding:11px 14px;min-height:46px;width:100%;min-width:0}
+input::placeholder{color:var(--faint)}
+details.paste summary{list-style:none;cursor:pointer;color:var(--accent);font-size:15px;font-weight:500;text-align:center;padding:6px}
+details.paste summary::-webkit-details-marker{display:none}
+.inline{display:flex;gap:8px;margin-top:8px}
+.inline input{background:var(--surface);box-shadow:var(--shadow)}
+.inline input{font-family:var(--mono);font-size:15px}
+
+/* Grouped lists (iOS-style) */
+.group{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin:0;padding:0;list-style:none}
+.group-title{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:0 16px 7px}
+.group-foot{font-size:13px;color:var(--muted);padding:7px 16px 0}
+.row{position:relative;display:flex;align-items:center;gap:10px;min-height:52px;padding:4px 8px 4px 16px}
+.row + .row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--line)}
+.row > .k{flex:0 0 108px;font-size:16px}
+.row > .k .req{color:var(--bad)}
+.row .val{flex:1;min-width:0;display:grid}
+.row input{background:transparent;padding:10px 6px;border-radius:8px;min-height:44px}
+.row input:focus{background:var(--fill)}
+.row .hint{font-size:12px;color:var(--muted);padding:0 6px 6px;min-height:0}
+.row .hint:empty{display:none}
+.hint.ok{color:var(--ok)} .hint.err{color:var(--bad)}
+.mini{position:relative;width:38px;height:38px;border-radius:50%;border:0;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;cursor:pointer;flex:none;overflow:hidden}
+.mini .ic{width:20px;height:20px}
+.mini input{position:absolute;inset:0;opacity:0;cursor:pointer;min-height:0;padding:0}
+.mini:active{transform:scale(.92)}
+@media (max-width:380px){ .row > .k{flex-basis:88px;font-size:15px} }
+.entry{display:grid;gap:12px}
+.entry .actions{grid-template-columns:1.6fr 1fr}
+
+/* Result */
+#result{overflow:hidden;scroll-margin:16px}
+.empty{padding:30px 22px;text-align:center;display:grid;gap:6px;justify-items:center}
+.empty-ic{width:60px;height:60px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:6px}
+.empty-ic .ic{width:30px;height:30px}
+.empty h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.empty p{color:var(--muted);font-size:15px;max-width:30ch}
+.verdict{padding:20px;display:grid;gap:18px;animation:rise .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+.v-ok{--ring:var(--ok-ring);--tone:var(--ok);--tone-bg:var(--ok-bg)}
+.v-warn{--ring:var(--warn-ring);--tone:var(--warn);--tone-bg:var(--warn-bg)}
+.v-bad{--ring:var(--bad-ring);--tone:var(--bad);--tone-bg:var(--bad-bg)}
+.v-none{--ring:var(--none-ring);--tone:var(--muted);--tone-bg:var(--fill)}
+.v-top{display:flex;gap:18px;align-items:center}
+.ring{position:relative;width:116px;height:116px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:9}
+.ring .track{stroke:var(--fill2)}
+.ring .val{stroke:var(--ring);stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)}
+.ring-c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring-c b{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.ring-c span{font-size:12px;color:var(--muted);margin-top:3px}
+.v-text{min-width:0}
+.v-label{display:inline-flex;align-items:center;gap:5px;padding:4px 11px 4px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone);font-size:14px;font-weight:600;margin-bottom:8px}
+.v-label .ic{width:17px;height:17px;stroke-width:2.2}
+.v-prod{font-size:21px;font-weight:700;letter-spacing:-.015em;line-height:1.2;overflow-wrap:anywhere}
+.v-sub{margin-top:4px;color:var(--muted);font-size:15px}
+.tag{justify-self:start;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-bg);padding:3px 9px;border-radius:999px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);background:var(--fill);border-radius:var(--r)}
+.stat{padding:11px 14px;display:grid;gap:1px;min-width:0}
+.stat + .stat{border-left:1px solid var(--line)}
+.stat span{font-size:12px;color:var(--muted)}
+.stat b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+@media (max-width:400px){ .v-top{gap:14px} .ring{width:96px;height:96px} .ring-c b{font-size:25px} .v-prod{font-size:19px} .stat{padding:10px} .stat b{font-size:15px} }
+.name-form{display:flex;gap:8px}
+details.disc{border-top:1px solid var(--line);padding-top:4px}
+details.disc summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px;font-size:16px;font-weight:500}
+details.disc summary::-webkit-details-marker{display:none}
+details.disc summary .ic{width:18px;height:18px;color:var(--faint);transition:transform .2s}
+details.disc[open] summary .ic{transform:rotate(90deg)}
+.dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:4px 0 8px}
+.dates label{display:grid;gap:5px;font-size:13px;color:var(--muted)}
+dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:4px 0 8px}
+dt{color:var(--muted);font-size:14px}
+dd{margin:0;font-family:var(--mono);font-size:14px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.raw{font-family:var(--mono);font-size:12px;color:var(--faint);overflow-wrap:anywhere;padding-bottom:8px}
+.v-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.saved{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ok);font-weight:600;font-size:16px;min-height:50px}
+.saved .ic{stroke-width:2.4}
+
+/* History */
+.h-title{display:none;justify-content:space-between;align-items:baseline}
+.h-title h2{font-size:22px;font-weight:700;letter-spacing:-.015em}
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.tile{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:12px 12px 10px;display:grid;gap:2px;min-width:0}
+.tile b{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.tile span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.tile .dot{width:8px;height:8px}
+@media (max-width:370px){ .summary{grid-template-columns:repeat(2,1fr)} }
+.dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--none-ring)}
+.t-ok.dot{background:var(--ok-ring)} .t-warn.dot{background:var(--warn-ring)} .t-bad.dot{background:var(--bad-ring)}
+.day{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:14px 16px 7px}
+.day:first-child{padding-top:0}
+.item{position:relative;display:flex;align-items:center;gap:12px;padding:11px 6px 11px 16px;min-height:60px}
+.item.new{animation:rise .35s ease}
+.item + .item::before{content:"";position:absolute;top:0;left:38px;right:0;border-top:1px solid var(--line)}
+.item .main{flex:1;min-width:0;display:grid}
+.item .main b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .main span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums;background:var(--fill);color:var(--muted)}
+.t-ok.pill{background:var(--ok-bg);color:var(--ok)} .t-warn.pill{background:var(--warn-bg);color:var(--warn)} .t-bad.pill{background:var(--bad-bg);color:var(--bad)}
+.del{border:0;background:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--faint);cursor:pointer;flex:none}
+.del:hover{color:var(--bad);background:var(--bad-bg)}
+.del .ic{width:19px;height:19px}
+.h-empty{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:28px 20px;text-align:center;color:var(--muted);font-size:15px}
+.h-actions{display:flex;gap:8px;flex-wrap:wrap}
+.h-actions .btn{flex:1 1 auto}
+textarea{width:100%;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px}
+
+/* Tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:1fr 1fr;padding:4px max(16px,env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line)}
+.tab{position:relative;border:0;background:none;font-size:11px;font-weight:600;color:var(--faint);display:grid;justify-items:center;gap:1px;padding:5px;min-height:50px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tab .ic{width:26px;height:26px}
+.tab[aria-current="page"]{color:var(--accent)}
+.badge{position:absolute;top:2px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));z-index:30;transform:translate(-50%,16px);opacity:0;pointer-events:none;
+  display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px);padding:8px 8px 8px 16px;border-radius:14px;background:var(--toast);color:#fff;font-size:15px;white-space:nowrap;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.2);transition:opacity .25s,transform .3s cubic-bezier(.2,.8,.2,1)}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{border:0;background:none;color:#5ee6cd;font-weight:600;padding:6px 10px;min-height:36px;border-radius:9px;cursor:pointer}
+
+/* Settings sheet */
+dialog.sheet{border:0;padding:0;background:var(--bg);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:min(86vh,820px);border-radius:22px;overflow:auto;overscroll-behavior:contain}
+dialog.sheet::backdrop{background:rgba(0,0,0,.38)}
+dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(24px)}}
+@media (max-width:599px){ dialog.sheet{margin:auto 0 0;width:100%;max-width:100%;border-radius:22px 22px 0 0;max-height:92vh;padding-bottom:env(safe-area-inset-bottom)} }
+.sheet-head{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:10px 12px;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.sheet-head h2{font-size:17px;font-weight:600;grid-column:2}
+.sheet-head .btn{grid-column:3;justify-self:end}
+.sheet-body{padding:8px 16px 28px;display:grid;gap:26px}
+.num{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.num i{font-style:normal;width:22px}
+.num input{width:76px;text-align:right;background:var(--fill);font-variant-numeric:tabular-nums}
+.row .grow{flex:1;font-size:16px}
+.row .valtext{color:var(--muted)}
+.row .seg{flex:1;max-width:260px;margin-left:auto}
+.privacy{display:flex;gap:12px;padding:14px 16px;font-size:15px;color:var(--muted)}
+.privacy .ic{color:var(--accent);margin-top:1px}
+.btn-row{display:flex;gap:8px;padding:10px 16px 12px;flex-wrap:wrap}
+.btn-row .btn{flex:1 1 auto}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
 
-<div class="wrap">
-  <header>
-    <div>
-      <h1>Shelf Life Scanner</h1>
-      <p class="sub">Reads GS1 DataMatrix, GS1-128, EAN/UPC and QR codes</p>
-    </div>
-  </header>
+<header class="top">
+  <div>
+    <p class="eyebrow" id="today"></p>
+    <h1>Shelf Life</h1>
+  </div>
+  <button class="icon-btn" id="openSettings" type="button" aria-label="Settings" data-ic="sliders"></button>
+</header>
 
-  <section class="panel" aria-label="Scanner">
-    <div class="seg" role="group" aria-label="Entry mode">
-      <button type="button" id="modeScan" aria-pressed="true">Scan code</button>
-      <button type="button" id="modeManual" aria-pressed="false">Enter dates manually</button>
+<main class="layout">
+  <section class="view" id="viewCheck" aria-label="Check a pack">
+    <div class="seg" role="group" aria-label="How to check">
+      <button type="button" id="modeScan" aria-pressed="true" data-ic="scan">Scan</button>
+      <button type="button" id="modeManual" aria-pressed="false" data-ic="keyboard">Type dates</button>
     </div>
-    <div id="reader" hidden></div>
-    <div class="btns">
-      <button class="primary" id="camBtn" type="button">Start camera</button>
-      <label class="filebtn">Scan from photo<input id="photo" type="file" accept="image/*" capture="environment"></label>
+
+    <div class="vf" id="vf">
+      <div id="reader"></div>
+      <button class="vf-idle" id="vfIdle" type="button" aria-label="Start camera to scan">
+        <svg class="brackets" viewBox="0 0 200 130" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 34V14A10 10 0 0 1 14 4h20M166 4h20a10 10 0 0 1 10 10v20M196 96v20a10 10 0 0 1-10 10h-20M34 126H14A10 10 0 0 1 4 116V96"/>
+          <path class="beam" d="M30 65h140"/>
+        </svg>
+        <b>Tap to scan</b>
+        <span>DataMatrix · GS1-128 · EAN/UPC · QR</span>
+      </button>
+      <button class="vf-close" id="vfClose" type="button" aria-label="Stop camera" data-ic="close"></button>
     </div>
-    <p class="msg" id="camMsg">Point the camera at the 2D code on the pack. Hold steady about 10–15 cm away.</p>
-    <form class="manual" id="manualForm">
-      <input id="manualInput" placeholder="Or type/paste code e.g. (01)…(17)271130(10)AB12" aria-label="Manual code entry">
-      <button type="submit">Read</button>
-    </form>
+
+    <div class="actions" id="scanActions">
+      <button class="btn primary" id="camBtn" type="button" data-ic="camera"><span>Start camera</span></button>
+      <label class="btn" data-ic="photo">Photo<input id="photo" type="file" accept="image/*" capture="environment"></label>
+    </div>
+
+    <p class="note" id="camMsg" role="status">Hold the code 10–15 cm from the camera.</p>
+
+    <details class="paste" id="pasteBox">
+      <summary>Paste or type a code instead</summary>
+      <form class="inline" id="manualForm">
+        <input id="manualInput" placeholder="(01)…(17)271130(10)AB12" aria-label="Code text" autocomplete="off" spellcheck="false">
+        <button class="btn primary small" type="submit">Read</button>
+      </form>
+    </details>
+
     <form class="entry" id="entryForm" hidden novalidate>
-      <div class="grid">
-        <label for="enGtin">Barcode / GTIN<input id="enGtin" inputmode="numeric" autocomplete="off" placeholder="Scan or type"></label>
-        <label for="enName">Product name<input id="enName" autocomplete="off" placeholder="Optional"></label>
-        <label for="enBatch">Batch / Lot<input id="enBatch" autocomplete="off" placeholder="Optional"></label>
+      <div>
+        <ul class="group">
+          <li class="row"><label class="k" for="enGtin">Barcode</label>
+            <span class="val"><input id="enGtin" inputmode="numeric" autocomplete="off" placeholder="Optional"></span>
+            <button class="mini" type="button" id="enScan" aria-label="Scan barcode with camera" data-ic="camera"></button>
+            <label class="mini" aria-label="Read barcode from a photo" data-ic="photo"><input id="enPhoto" type="file" accept="image/*" capture="environment" aria-label="Read barcode from a photo"></label>
+          </li>
+          <li class="row"><label class="k" for="enName">Product</label><span class="val"><input id="enName" autocomplete="off" placeholder="Optional"></span></li>
+          <li class="row"><label class="k" for="enBatch">Batch</label><span class="val"><input id="enBatch" autocomplete="off" placeholder="Optional"></span></li>
+        </ul>
       </div>
-      <div class="grid">
-        <label for="enExp"><span>Expiry date <span class="req" aria-hidden="true">*</span></span>
-          <span class="dateRow"><input id="enExp" type="text" inputmode="numeric" autocomplete="off" placeholder="DD/MM/YYYY or MM/YYYY" required aria-describedby="enExpHint">
-          <span class="filebtn pick" title="Pick from calendar">📅<input type="date" id="enExpPick" aria-label="Pick expiry date from calendar" tabindex="-1"></span></span>
-          <span class="hint" id="enExpHint"></span></label>
-        <label for="enMfg">Manufacture date
-          <span class="dateRow"><input id="enMfg" type="text" inputmode="numeric" autocomplete="off" placeholder="Optional, for % remaining" aria-describedby="enMfgHint">
-          <span class="filebtn pick" title="Pick from calendar">📅<input type="date" id="enMfgPick" aria-label="Pick manufacture date from calendar" tabindex="-1"></span></span>
-          <span class="hint" id="enMfgHint"></span></label>
+      <div>
+        <ul class="group">
+          <li class="row"><label class="k" for="enExp">Expiry <span class="req" aria-hidden="true">*</span></label>
+            <span class="val"><input id="enExp" inputmode="numeric" autocomplete="off" placeholder="DD/MM/YYYY" aria-describedby="enExpHint" required><span class="hint" id="enExpHint" aria-live="polite"></span></span>
+            <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enExpPick" aria-label="Pick expiry date from calendar" tabindex="-1"></span>
+          </li>
+          <li class="row"><label class="k" for="enMfg">Made</label>
+            <span class="val"><input id="enMfg" inputmode="numeric" autocomplete="off" placeholder="Optional" aria-describedby="enMfgHint"><span class="hint" id="enMfgHint" aria-live="polite"></span></span>
+            <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enMfgPick" aria-label="Pick manufacture date from calendar" tabindex="-1"></span>
+          </li>
+        </ul>
+        <p class="group-foot">Month-only dates like 11/2027 count as the last day of the month. Add the manufacture date to see % shelf life left.</p>
       </div>
-      <div class="btns">
-        <button class="primary" type="submit">Check &amp; save to log</button>
-        <button type="button" id="enClear">Clear</button>
+      <div class="actions">
+        <button class="btn primary" type="submit">Check pack</button>
+        <button class="btn" type="button" id="enClear">Clear</button>
       </div>
-      <p class="msg">Month-only dates (e.g. 11/2027) count as the last day of that month.</p>
     </form>
+
+    <section class="card" id="result" aria-live="polite" aria-label="Result"></section>
+
+    <p class="foot-note" data-ic="lock">Everything stays on this device.</p>
   </section>
 
-  <section class="panel" id="result" aria-live="polite"></section>
-
-  <section class="panel" aria-label="Product list">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <span class="label">Product list (<span id="prodCount">0</span> items)</span>
-      <div class="btns">
-        <label class="filebtn">Import CSV<input id="prodFile" type="file" accept=".csv,text/csv,text/plain"></label>
-        <button type="button" id="prodCopy">Copy list</button>
+  <section class="view" id="viewHistory" aria-labelledby="hTitle">
+    <div class="h-title"><h2 id="hTitle">History</h2><span class="note"><span id="logCount">0</span> saved</span></div>
+    <div>
+      <p class="group-title">Today</p>
+      <div class="summary">
+        <div class="tile"><b id="sumAll">0</b><span>Checked</span></div>
+        <div class="tile"><b id="sumOk">0</b><span><i class="dot t-ok"></i>Accept</span></div>
+        <div class="tile"><b id="sumWarn">0</b><span><i class="dot t-warn"></i>Near</span></div>
+        <div class="tile"><b id="sumBad">0</b><span><i class="dot t-bad"></i>Reject</span></div>
       </div>
     </div>
-    <p class="msg" id="prodMsg">Matches the scanned GTIN to a product name. Import a CSV with a header row containing <b>GTIN</b> (or Barcode) and <b>Description</b> (or Product name). Unknown items can be named once from the result card and are remembered on this device.</p>
-    <textarea id="prodBox" rows="4" hidden readonly aria-label="Product list CSV"></textarea>
-  </section>
-
-  <section class="panel" aria-label="Acceptance rules">
-    <span class="label">Acceptance rules</span>
-    <div class="settings">
-      <label for="minPct">Min. remaining shelf life (%)<input id="minPct" type="number" min="0" max="100" value="60"></label>
-      <label for="nearMonths">Flag near expiry within (months)<input id="nearMonths" type="number" min="0" max="60" value="6"></label>
+    <div class="seg" role="group" aria-label="Filter history" id="filterSeg">
+      <button type="button" data-f="all" aria-pressed="true">All</button>
+      <button type="button" data-f="flag" aria-pressed="false">Needs attention</button>
     </div>
-    <p class="msg">Set these to your organisation's receiving SOP. % remaining needs a manufacture date.</p>
-  </section>
-
-  <section class="panel span2" aria-label="Scan log">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-      <span class="label">Scan log (<span id="logCount">0</span>)</span>
-      <div class="btns">
-        <button type="button" id="dlBtn">Download CSV</button>
-        <button type="button" id="copyBtn">Copy CSV</button>
-        <button type="button" id="clearBtn">Clear</button>
-      </div>
+    <div id="logList"></div>
+    <div class="h-actions" id="hActions">
+      <button class="btn small" type="button" id="dlBtn" data-ic="download">Export CSV</button>
+      <button class="btn small" type="button" id="copyBtn" data-ic="copy"><span>Copy</span></button>
+      <button class="btn small danger" type="button" id="clearBtn" data-ic="trash">Clear all</button>
     </div>
-    <div class="tablewrap"><table class="log">
-      <thead><tr><th>Time</th><th>Product</th><th>GTIN</th><th>Batch</th><th>Expiry</th><th>Days</th><th>Status</th></tr></thead>
-      <tbody id="logBody"></tbody>
-    </table></div>
-    <p class="msg" id="clearConfirm" hidden>Clear all entries? <button type="button" id="clearYes">Yes, clear</button> <button type="button" id="clearNo">Cancel</button></p>
     <textarea id="csvBox" rows="5" hidden readonly aria-label="CSV text"></textarea>
   </section>
-</div>
+</main>
+
+<nav class="tabbar" aria-label="Sections">
+  <button class="tab" type="button" data-view="check" aria-current="page" data-ic="scan">Check</button>
+  <button class="tab" type="button" data-view="history" data-ic="clock">History<span class="badge" id="tabBadge" hidden>0</span></button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndo">Undo</button></div>
+
+<dialog class="sheet" id="settings" aria-labelledby="setTitle">
+  <form method="dialog" class="sheet-head"><h2 id="setTitle">Settings</h2><button class="btn plain" type="submit" style="font-weight:600">Done</button></form>
+  <div class="sheet-body">
+    <div>
+      <p class="group-title">Receiving rules</p>
+      <div class="group">
+        <label class="row" for="minPct"><span class="grow">Minimum shelf life left</span><span class="num"><input id="minPct" type="number" inputmode="numeric" min="0" max="100" value="60"><i>%</i></span></label>
+        <label class="row" for="nearMonths"><span class="grow">Warn when expiring within</span><span class="num"><input id="nearMonths" type="number" inputmode="numeric" min="0" max="60" value="6"><i>mo</i></span></label>
+      </div>
+      <p class="group-foot">Match these to your organisation’s receiving SOP. The minimum % is checked only when a manufacture date is known.</p>
+    </div>
+    <div>
+      <p class="group-title">Products</p>
+      <div class="group">
+        <div class="row"><span class="grow">Product names</span><span class="valtext" id="prodCount">0</span></div>
+        <div class="btn-row">
+          <label class="btn small tinted">Import CSV<input id="prodFile" type="file" accept=".csv,text/csv,text/plain"></label>
+          <button class="btn small tinted" type="button" id="prodCopy">Copy list</button>
+        </div>
+      </div>
+      <p class="group-foot" id="prodMsg">Import a CSV with a GTIN (or Barcode) column and a Description (or Product name) column. Names you type for unknown packs are remembered here.</p>
+      <textarea id="prodBox" rows="4" hidden readonly aria-label="Product list CSV" style="margin-top:8px"></textarea>
+    </div>
+    <div>
+      <p class="group-title">Appearance</p>
+      <div class="group">
+        <div class="row"><span class="grow">Theme</span>
+          <div class="seg" role="group" aria-label="Theme" id="themeSeg">
+            <button type="button" data-t="auto" aria-pressed="true">Auto</button>
+            <button type="button" data-t="light" aria-pressed="false">Light</button>
+            <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="group-title">Privacy</p>
+      <div class="group"><p class="privacy" data-ic="lock">Your history, product names and settings are saved only in this browser on this device. Nothing is uploaded. The camera is used only while you scan, and turns off when you leave the Check tab.</p></div>
+      <p class="group-foot">Dates are read per GS1 General Specifications (YYMMDD; day 00 = last day of the month).</p>
+    </div>
+  </div>
+</dialog>
 
 <script id="core">
 /* ---------- GS1 parsing ---------- */
@@ -284,19 +505,67 @@ function evaluate(exp, mfg, rules, now = new Date()){
 }
 </script>
 <script>
-/* ---------- UI ---------- */
+/* ---------- Helpers ---------- */
 const $ = id => document.getElementById(id);
-const fmtD = d => d ? d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"}) : "—";
+const fmtD = d => d ? d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "—";
 const isoD = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : "";
 const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const store = { get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const isNarrow = () => matchMedia("(max-width:899px)").matches;
 
+const ICONS = {
+  scan:'<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  photo:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/>',
+  keyboard:'<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/>',
+  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  alert:'<path d="M12 4.5 3 19.5h18z"/><path d="M12 10v4M12 17h.01"/>',
+  x:'<circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6M15 9l-6 6"/>',
+  calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>',
+  chevron:'<path d="m9 6 6 6-6 6"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  close:'<path d="M7 7l10 10M17 7 7 17"/>',
+  download:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  box:'<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>'
+};
+const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
+document.querySelectorAll("[data-ic]").forEach(el=>el.insertAdjacentHTML("afterbegin", ic(el.dataset.ic)));
+
+$("today").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
+
+/* ---------- Appearance ---------- */
+function applyTheme(t){
+  if (t==="light"||t==="dark") document.documentElement.dataset.theme=t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll("#themeSeg button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.t===t)));
+}
+applyTheme(store.get("sls_theme","auto"));
+$("themeSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; store.set("sls_theme",b.dataset.t); applyTheme(b.dataset.t); });
+
+/* ---------- State ---------- */
 let log = store.get("sls_log", []);
+log.forEach((r,i)=>{ if(!r.id) r.id = "r"+(Date.parse(r.t)||0)+"-"+i; });
+const newId = () => "r"+Date.now()+"-"+Math.random().toString(36).slice(2,7);
+const saveLog = () => store.set("sls_log", log);
 let current = null;
 const rules = () => ({minPct:+$("minPct").value||0, nearMonths:+$("nearMonths").value||0});
 const savedRules = store.get("sls_rules", null);
 if (savedRules){ $("minPct").value=savedRules.minPct; $("nearMonths").value=savedRules.nearMonths; }
 ["minPct","nearMonths"].forEach(id=>$(id).addEventListener("input",()=>{store.set("sls_rules",rules()); render();}));
+
+/* ---------- Toast with undo ---------- */
+let toastTimer;
+function toast(msg, undo){
+  $("toastMsg").textContent = msg;
+  const b = $("toastUndo"); b.hidden = !undo; b.onclick = () => { hideToast(); undo(); };
+  $("toast").classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, undo ? 6000 : 2600);
+}
+function hideToast(){ $("toast").classList.remove("show"); }
+function buzz(status){ if (!navigator.vibrate) return; try{ navigator.vibrate(status==="ok"?40 : status==="warn"?[40,70,40] : [90,60,90]); }catch{} }
 
 /* ---------- Product list: shared products.csv in the repo + this device's own entries ---------- */
 const normG = g => { const d=String(g||"").replace(/\D/g,""); return d.length>=8 && d.length<=14 ? d.padStart(14,"0") : ""; };
@@ -330,7 +599,7 @@ function productsFromCSV(text){
   }
   return out;
 }
-function prodCount(){ $("prodCount").textContent = Object.keys({...baseProducts,...localProducts}).length; }
+function prodCount(){ const n=Object.keys({...baseProducts,...localProducts}).length; $("prodCount").textContent = n+(n===1?" item":" items"); }
 fetch("products.csv",{cache:"no-store"}).then(r=>r.ok?r.text():"").then(t=>{
   if (!t) return; baseProducts=productsFromCSV(t); prodCount(); render(); renderLog();
 }).catch(()=>{});
@@ -338,90 +607,193 @@ $("prodFile").addEventListener("change", async e=>{
   const f=e.target.files?.[0]; if(!f) return;
   try{ const add=productsFromCSV(await f.text()); const n=Object.keys(add).length;
     if (!n) throw 0;
-    localProducts={...localProducts,...add}; store.set("sls_products",localProducts); prodCount(); render();
-    $("prodMsg").textContent=`Imported ${n} products from ${f.name}.`; $("prodMsg").className="msg";
-  }catch{ $("prodMsg").textContent="No products found. The file needs a GTIN (or Barcode) column and a Description (or Product name) column."; $("prodMsg").className="msg err"; }
+    localProducts={...localProducts,...add}; store.set("sls_products",localProducts); prodCount(); render(); renderLog();
+    $("prodMsg").textContent=`Imported ${n} products from ${f.name}.`; $("prodMsg").style.color="var(--ok)";
+  }catch{ $("prodMsg").textContent="No products found. The file needs a GTIN (or Barcode) column and a Description (or Product name) column."; $("prodMsg").style.color="var(--bad)"; }
   finally{ e.target.value=""; }
 });
 $("prodCopy").onclick=()=>{
   const all={...baseProducts,...localProducts}, q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
   const t=["GTIN,Description,Pack,Item code",...Object.entries(all).map(([g,v])=>[g,v.d,v.p,v.c].map(q).join(","))].join("\n");
   $("prodBox").value=t; $("prodBox").hidden=false;
-  navigator.clipboard?.writeText(t).then(()=>{$("prodCopy").textContent="Copied";setTimeout(()=>$("prodCopy").textContent="Copy list",1500)}).catch(()=>$("prodBox").select());
+  navigator.clipboard?.writeText(t).then(()=>toast("Product list copied")).catch(()=>$("prodBox").select());
 };
 prodCount();
 
+/* ---------- Checking a pack ---------- */
+const EXAMPLE = "]d2" + "0109501101530003" + "11260115" + "17290131" + "10LT2408A" + "\u001d" + "21SN0042977";
 function handle(raw, format, example=false){
   const c = classify(raw, format);
   const exp = c.ais["17"] ? gs1Date(c.ais["17"]) : null;
   const mfg = c.ais["11"] ? gs1Date(c.ais["11"]) : null;
-  current = {raw, format, kind:c.kind, ais:c.ais, text:c.text, exp, mfg, example, logged:false};
-  if (navigator.vibrate) try{navigator.vibrate(80)}catch{}
+  current = {raw, format, kind:c.kind, ais:c.ais, text:c.text, exp, mfg, example, logged:false, fresh:true};
+  if (!example) buzz(evaluate(exp, mfg, rules()).status);
   render();
   if (exp && !example) addToLog();
+  revealResult();
 }
+function revealResult(){ if (isNarrow()) $("result").scrollIntoView({behavior:reduceMotion?"auto":"smooth", block:"nearest"}); }
 
+function entryFromCurrent(ev){
+  return {mfg:isoD(current.mfg), exp:isoD(current.exp), days:ev.days??"", pct: ev.pct==null?"":ev.pct.toFixed(0), status:ev.label};
+}
 function addToLog(){
   if (!current || current.logged) return;
-  const ev = evaluate(current.exp, current.mfg, rules());
-  log.unshift({t:new Date().toISOString(), desc:product(current.ais["01"])?.d||"", kind:current.kind, gtin:current.ais["01"]||"", batch:current.ais["10"]||"",
-    serial:current.ais["21"]||"", mfg:isoD(current.mfg), exp:isoD(current.exp), days:ev.days??"",
-    pct: ev.pct==null?"":ev.pct.toFixed(0), status:ev.label, raw:current.raw.replace(/\u001d/g,"<GS>")});
-  current.logged = true; store.set("sls_log", log); renderLog(); render();
+  const ev = evaluate(current.exp, current.mfg, rules()), id = newId();
+  log.unshift({id, t:new Date().toISOString(), desc:product(current.ais["01"])?.d || current.name || "", kind:current.kind,
+    gtin:current.ais["01"]||"", batch:current.ais["10"]||"", serial:current.ais["21"]||"", ...entryFromCurrent(ev),
+    raw:current.raw.replace(/\u001d/g,"<GS>")});
+  current.logged = true; current.logId = id; freshId = id; saveLog(); renderLog(); render();
+  toast("Saved to History", ()=>{
+    log = log.filter(r=>r.id!==id); saveLog();
+    if (current?.logId===id) current.logged=false;
+    renderLog(); render();
+  });
+}
+function datesChanged(){
+  if (current.logged){
+    const r = log.find(x=>x.id===current.logId);
+    if (r){ Object.assign(r, entryFromCurrent(evaluate(current.exp, current.mfg, rules()))); saveLog(); renderLog(); }
+  }
+  render();
 }
 
+const RING_C = 2*Math.PI*44;
 function render(){
   const el = $("result");
-  if (!current){ el.innerHTML = `<span class="label">Result</span><p class="msg">Scan a pack to see its expiry and remaining shelf life.</p>`; return; }
-  const a = current.ais, ev = evaluate(current.exp, current.mfg, rules());
-  const cls = {ok:"s-ok",warn:"s-warn",bad:"s-bad",none:"s-none"}[ev.status];
+  if (!current){
+    el.innerHTML = `<div class="empty">
+      <div class="empty-ic">${ic("box")}</div>
+      <h2>Ready when you are</h2>
+      <p>Scan a pack or type its dates to see how much shelf life is left.</p>
+      <button class="btn plain" type="button" id="exBtn">See an example</button></div>`;
+    $("exBtn").onclick = () => handle(EXAMPLE, "DATA_MATRIX", true);
+    return;
+  }
+  const a = current.ais, r = rules(), ev = evaluate(current.exp, current.mfg, r);
   const gt = a["01"], prod = product(gt);
+  const name = prod?.d || current.name || (gt ? "Unknown product" : current.kind==="Non-GS1 code" ? "Not a GS1 code" : "Pack");
+  const icon = {ok:"check", warn:"alert", bad:"x", none:"calendar"}[ev.status];
+  let sub;
+  if (ev.status==="none") sub = current.kind==="Non-GS1 code" ? "This code has no product or date data. Add the expiry date below." : "No expiry in this code. Add it from the pack label below.";
+  else if (ev.days<0) sub = `Expired ${fmtD(current.exp)}. Do not accept.`;
+  else if (ev.status==="bad") sub = `${ev.pct.toFixed(0)}% shelf life left, below your ${r.minPct}% minimum.`;
+  else if (ev.status==="warn") sub = `Expires ${fmtD(current.exp)}, inside your ${r.nearMonths}-month window.`;
+  else sub = `Expires ${fmtD(current.exp)}. Meets your receiving rules.`;
+  const frac = ev.days==null ? 0 : ev.pct!=null ? ev.pct/100 : ev.days<0 ? 0 : Math.min(1, ev.months/Math.max(12, r.nearMonths*2));
+  const off = RING_C*(1-frac), start = current.fresh && !reduceMotion ? RING_C : off;
+  const centre = ev.days==null ? `<b>—</b><span>no date</span>` : `<b>${Math.abs(ev.days)}</b><span>${ev.days<0?"days ago":ev.days===1?"day left":"days left"}</span>`;
   const rows = [
     ["Type", current.kind],
     gt && ["GTIN", gt + (gtinCheckOk(gt)?"":"  ⚠ check digit fails")],
+    prod?.p && ["Pack", prod.p], prod?.c && ["Item code", prod.c],
     a["10"] && ["Batch", a["10"]], a["21"] && ["Serial", a["21"]],
     ["Expiry", fmtD(current.exp)], ["Manufactured", fmtD(current.mfg)],
     ...Object.keys(a).filter(k=>!["01","10","21","17","11"].includes(k)).map(k=>[`(${k}) ${AI[k]?.n||""}`, a[k]]),
-    current.text && ["Content", current.text]
+    current.text && current.kind!=="Manual entry" && ["Content", current.text]
   ].filter(Boolean);
-  el.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <span class="label">Result</span>${current.example?'<span class="example">Example scan</span>':""}
+  const isManual = current.kind==="Manual entry";
+  el.innerHTML = `<div class="verdict v-${ev.status}">
+    ${current.example?'<span class="tag">Example</span>':""}
+    <div class="v-top">
+      <div class="ring" role="img" aria-label="${ev.days==null?"No expiry date":Math.abs(ev.days)+(ev.days<0?" days since expiry":" days left")}">
+        <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="44"/><circle class="val" id="ringVal" cx="50" cy="50" r="44" style="stroke-dasharray:${RING_C};stroke-dashoffset:${start}"/></svg>
+        <div class="ring-c">${centre}</div>
+      </div>
+      <div class="v-text">
+        <p class="v-label">${ic(icon)}${esc(ev.label)}</p>
+        <h2 class="v-prod">${esc(name)}</h2>
+        <p class="v-sub">${esc(sub)}</p>
+      </div>
     </div>
-    ${gt ? (prod ? `<div class="prod"><b>${esc(prod.d)}</b>${prod.p||prod.c?`<span class="msg">${esc([prod.p,prod.c&&"Item "+prod.c].filter(Boolean).join(" · "))}</span>`:""}</div>`
-      : `<form class="manual" id="nameForm"><input id="nameIn" placeholder="Unknown product. Type its name to remember it" aria-label="Product name"><button type="submit">Save name</button></form>`) : ""}
-    <div class="status ${cls}"><span>${esc(ev.label)}</span>${ev.days!=null?`<small>${ev.days<0?Math.abs(ev.days)+" days ago":ev.days+" days left"}</small>`:""}</div>
-    ${ev.days!=null?`<div class="big">
-      <div><span class="label">Days left</span><b>${ev.days}</b></div>
-      <div><span class="label">Months left</span><b>${ev.months.toFixed(1)}</b></div>
-      <div><span class="label">% remaining</span><b>${ev.pct==null?"—":ev.pct.toFixed(0)+"%"}</b></div>
-    </div>${ev.pct!=null?`<div class="bar" aria-hidden="true"><i style="width:${ev.pct}%"></i></div>`:""}`:""}
-    <dl>${rows.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
-    <div class="fill">
-      <label for="expIn">Expiry date${a["17"]?" (from code)":""}<input id="expIn" type="date" value="${isoD(current.exp)}"></label>
-      <label for="mfgIn">Manufacture date${a["11"]?" (from code)":""}<input id="mfgIn" type="date" value="${isoD(current.mfg)}"></label>
+    ${ev.days!=null?`<div class="stats">
+      <div class="stat"><span>Expires</span><b>${esc(fmtD(current.exp))}</b></div>
+      <div class="stat"><span>Months left</span><b>${Math.max(0,ev.months).toFixed(1)}</b></div>
+      <div class="stat" ${ev.pct==null?'title="Add the manufacture date to see this"':""}><span>Shelf life left</span><b>${ev.pct==null?"—":ev.pct.toFixed(0)+"%"}</b></div>
+    </div>`:""}
+    ${gt && !prod ? `<form class="name-form" id="nameForm"><input id="nameIn" placeholder="Name this product" aria-label="Product name" autocomplete="off"><button class="btn small tinted" type="submit">Save</button></form>` : ""}
+    <div>
+      <details class="disc" ${current.exp?"":"open"}><summary>${current.exp?"Edit dates":"Add dates"}${ic("chevron")}</summary>
+        <div class="dates">
+          <label for="expIn">Expiry${a["17"]?" (from code)":""}<input id="expIn" type="date" value="${isoD(current.exp)}"></label>
+          <label for="mfgIn">Manufactured${a["11"]?" (from code)":""}<input id="mfgIn" type="date" value="${isoD(current.mfg)}"></label>
+        </div>
+      </details>
+      <details class="disc"><summary>Code details${ic("chevron")}</summary>
+        <dl>${rows.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+        ${isManual?"":`<div class="raw">${esc(current.raw.replace(/\u001d/g,"<GS>"))}</div>`}
+      </details>
     </div>
-    ${!a["17"] && current.kind!=="Manual entry"?`<p class="msg">This code has no expiry. Enter it from the pack label.</p>`:""}
-    <div class="btns">${current.logged?`<span class="msg">Saved to log</span>`:`<button class="primary" type="button" id="logBtn">Save to log</button>`}</div>
-    <div class="raw">Raw: ${esc(current.raw.replace(/\u001d/g,"<GS>"))}</div>`;
-  $("expIn").addEventListener("change",e=>{current.exp=e.target.value?new Date(e.target.value+"T00:00"):null; current.logged=false; render();});
-  $("mfgIn").addEventListener("change",e=>{current.mfg=e.target.value?new Date(e.target.value+"T00:00"):null; current.logged=false; render();});
+    <div class="v-actions">
+      ${current.logged ? `<p class="saved">${ic("check")}Saved</p>`
+        : `<button class="btn primary" type="button" id="logBtn" ${current.exp?"":"disabled"}>${current.example?"Save anyway":"Save"}</button>`}
+      <button class="btn tinted" type="button" id="nextBtn">${current.example?"Done":"Next pack"}</button>
+    </div>
+  </div>`;
+  if (current.fresh){ current.fresh=false; if (!reduceMotion) requestAnimationFrame(()=>requestAnimationFrame(()=>{ const v=$("ringVal"); if (v) v.style.strokeDashoffset=off; })); }
+  $("expIn").addEventListener("change",e=>{ current.exp=e.target.value?new Date(e.target.value+"T00:00"):null; datesChanged(); });
+  $("mfgIn").addEventListener("change",e=>{ current.mfg=e.target.value?new Date(e.target.value+"T00:00"):null; datesChanged(); });
   $("logBtn")?.addEventListener("click", ()=>{ current.example=false; addToLog(); });
+  $("nextBtn").addEventListener("click", nextPack);
   $("nameForm")?.addEventListener("submit", e=>{ e.preventDefault(); const v=$("nameIn").value.trim(); if(!v) return;
     localProducts[normG(gt)]={d:v,p:"",c:""}; store.set("sls_products",localProducts); prodCount();
-    log.forEach(r=>{ if(normG(r.gtin)===normG(gt) && !r.desc) r.desc=v; }); store.set("sls_log",log); renderLog(); render(); });
+    log.forEach(r=>{ if(normG(r.gtin)===normG(gt) && !r.desc) r.desc=v; }); saveLog(); renderLog(); render();
+    toast("Name saved on this device"); });
+}
+function nextPack(){
+  const wasExample = current?.example;
+  current = null; render();
+  if (wasExample) return;
+  if (mode==="manual"){ $("enGtin").focus(); return; }
+  window.scrollTo({top:0, behavior:reduceMotion?"auto":"smooth"});
+  if (!running) toggleCam();
 }
 
+/* ---------- History ---------- */
+let filter = "all", freshId = null;
+const statusOf = s => s==="Acceptable"?"ok" : s==="Near expiry"?"warn" : /Expired|Below/.test(s)?"bad" : "none";
+const sameDay = (a,b) => a.toDateString()===b.toDateString();
+function dayLabel(d){
+  const t=new Date(), y=new Date(); y.setDate(t.getDate()-1);
+  if (sameDay(d,t)) return "Today"; if (sameDay(d,y)) return "Yesterday";
+  return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",...(d.getFullYear()!==t.getFullYear()?{year:"numeric"}:{})});
+}
 function renderLog(){
-  $("logCount").textContent = log.length;
-  const pc = s => s==="Acceptable"?"s-ok":s==="Near expiry"?"s-warn":/Expired|Below/.test(s)?"s-bad":"s-none";
-  $("logBody").innerHTML = log.length ? log.map(r=>`<tr>
-    <td data-label="Time">${new Date(r.t).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</td>
-    <td data-label="Product">${esc(r.desc || product(r.gtin)?.d || "—")}</td><td data-label="GTIN" class="mono">${esc(r.gtin||"—")}</td><td data-label="Batch" class="mono">${esc(r.batch||"—")}</td><td data-label="Expiry" class="mono">${esc(r.exp)}</td>
-    <td data-label="Days">${esc(r.days)}</td><td data-label="Status"><span class="pill ${pc(r.status)}">${esc(r.status)}</span></td></tr>`).join("")
-    : `<tr><td colspan="7" class="msg empty">No scans yet. Each scan with an expiry is saved here.</td></tr>`;
+  const now=new Date(), todays=log.filter(r=>sameDay(new Date(r.t),now)), cnt={ok:0,warn:0,bad:0};
+  todays.forEach(r=>{ const s=statusOf(r.status); if (s in cnt) cnt[s]++; });
+  $("sumAll").textContent=todays.length; $("sumOk").textContent=cnt.ok; $("sumWarn").textContent=cnt.warn; $("sumBad").textContent=cnt.bad;
+  $("tabBadge").textContent=todays.length; $("tabBadge").hidden=!todays.length;
+  $("logCount").textContent=log.length; $("hActions").hidden=!log.length;
+  const rows = log.filter(r=> filter==="all" || ["warn","bad"].includes(statusOf(r.status)));
+  if (!rows.length){
+    $("logList").innerHTML = `<div class="h-empty">${log.length ? "Nothing needs attention. Every pack met your rules." : "Packs you check are saved here, so you can export them later."}</div>`;
+    return;
+  }
+  let html="", last="";
+  for (const r of rows){
+    const d=new Date(r.t), lab=dayLabel(d), s=statusOf(r.status);
+    if (lab!==last){ if (last) html+="</ul>"; html+=`<h3 class="day">${esc(lab)}</h3><ul class="group">`; last=lab; }
+    const exp = r.exp ? fmtD(new Date(r.exp+"T00:00")) : "no expiry";
+    const name = r.desc || product(r.gtin)?.d || (r.gtin ? "GTIN "+r.gtin : "Unnamed pack");
+    const pill = r.days==="" ? "—" : +r.days<0 ? "Expired" : `${r.days} d`;
+    html += `<li class="item${r.id===freshId?" new":""}"><span class="dot t-${s}" aria-hidden="true"></span>
+      <div class="main"><b>${esc(name)}</b><span>${esc([r.batch&&"Lot "+r.batch, "Exp "+exp, d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})].filter(Boolean).join(" · "))}</span></div>
+      <span class="pill t-${s}" title="${esc(r.status)}"><span class="sr">${esc(r.status)}, </span>${esc(pill)}</span>
+      <button class="del" type="button" data-id="${esc(r.id)}" aria-label="Delete ${esc(name)}">${ic("trash")}</button></li>`;
+  }
+  $("logList").innerHTML = html + "</ul>"; freshId = null;
 }
-
+$("logList").addEventListener("click", e=>{
+  const b=e.target.closest(".del"); if(!b) return;
+  const i=log.findIndex(r=>r.id===b.dataset.id); if (i<0) return;
+  const [gone]=log.splice(i,1); saveLog(); renderLog();
+  if (current?.logId===gone.id){ current.logged=false; render(); }
+  toast("Entry deleted", ()=>{ log.splice(i,0,gone); saveLog(); if (current?.logId===gone.id){ current.logged=true; render(); } renderLog(); });
+});
+$("filterSeg").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return; filter=b.dataset.f;
+  $("filterSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); renderLog();
+});
 function csv(){
   const cols=["t","desc","kind","gtin","batch","serial","mfg","exp","days","pct","status","raw"];
   const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
@@ -430,26 +802,40 @@ function csv(){
 }
 $("dlBtn").onclick = ()=>{
   try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv()],{type:"text/csv"}));
-    a.download=`shelf-life-log-${isoD(new Date())}.csv`; document.body.appendChild(a); a.click(); a.remove(); }catch{}
-  $("csvBox").value=csv(); $("csvBox").hidden=false;
+    a.download=`shelf-life-log-${isoD(new Date())}.csv`; document.body.appendChild(a); a.click(); a.remove(); toast("CSV exported"); }
+  catch{ $("csvBox").value=csv(); $("csvBox").hidden=false; }
 };
 $("copyBtn").onclick = ()=>{
-  const t=csv(); $("csvBox").value=t; $("csvBox").hidden=false;
-  navigator.clipboard?.writeText(t).then(()=>{$("copyBtn").textContent="Copied";setTimeout(()=>$("copyBtn").textContent="Copy CSV",1500)})
-    .catch(()=>{$("csvBox").select()}) ?? $("csvBox").select();
+  const t=csv();
+  const fallback=()=>{ $("csvBox").value=t; $("csvBox").hidden=false; $("csvBox").select(); };
+  navigator.clipboard ? navigator.clipboard.writeText(t).then(()=>toast(`Copied ${log.length} entries`)).catch(fallback) : fallback();
 };
-$("clearBtn").onclick = ()=>{ $("clearConfirm").hidden=false; };
-$("clearNo").onclick = ()=>{ $("clearConfirm").hidden=true; };
-$("clearYes").onclick = ()=>{ log=[]; store.set("sls_log",log); renderLog(); $("clearConfirm").hidden=true; $("csvBox").hidden=true; };
+$("clearBtn").onclick = ()=>{
+  if (!log.length) return;
+  const snap = log; log=[]; saveLog(); renderLog(); $("csvBox").hidden=true;
+  if (current?.logged){ current.logged=false; render(); }
+  toast(`Cleared ${snap.length} ${snap.length===1?"entry":"entries"}`, ()=>{ log=snap; saveLog(); renderLog(); });
+};
 
-$("manualForm").addEventListener("submit", e=>{ e.preventDefault(); const v=$("manualInput").value.trim(); if(v) handle(v, ""); });
+/* ---------- Navigation: tabs (phones) and settings sheet ---------- */
+function setView(v){
+  document.body.dataset.view=v;
+  document.querySelectorAll(".tab").forEach(t=>{ if (t.dataset.view===v) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
+  if (v!=="check" && running && isNarrow()) stopCam();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>setView(t.dataset.view)));
+$("openSettings").onclick = ()=>$("settings").showModal();
+$("settings").addEventListener("click", e=>{ if (e.target===$("settings")) $("settings").close(); });
+
+$("manualForm").addEventListener("submit", e=>{ e.preventDefault(); const v=$("manualInput").value.trim(); if(v){ lastText=""; handle(v, ""); $("manualInput").value=""; } });
 
 /* ---------- Manual date entry (optionally with a scanned barcode) ---------- */
 let mode = store.get("sls_mode","scan")==="manual" ? "manual" : "scan";
 const MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
 const dmy = d => d ? `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}` : "";
 /* Accepts DD/MM/YYYY, DD-MM-YY, DD.MM.YYYY, YYYY-MM-DD, MM/YYYY, YYYY-MM, DDMMYYYY, "30 Nov 2027", "Nov 2027".
-   Month-only = last day of that month. Day-first (European/Ugandan) order. */
+   Month-only = last day of that month. Day-first order. */
 function parseUserDate(str){
   const s = String(str||"").trim().toLowerCase().replace(/^(exp|expiry|mfg|mfd|best before|bb|use by)[:.\s]*/,"");
   if (!s) return null;
@@ -464,19 +850,16 @@ function parseUserDate(str){
     const mo = MONTHS.indexOf(m[2])+1; return mo ? mk(+m[3], mo, m[1]?+m[1]:null) : null; }
   return null;
 }
-function dateHint(inId, hintId, required){
+function dateHint(inId, hintId){
   const v=$(inId).value.trim(), d=parseUserDate(v), h=$(hintId);
-  if (!v){ h.textContent = required ? "" : ""; h.className="hint"; return null; }
-  if (!d){ h.textContent="Not a valid date. Use DD/MM/YYYY or MM/YYYY."; h.className="hint err"; return undefined; }
-  h.textContent = "= " + fmtD(d); h.className="hint ok"; return d;
+  if (!v){ h.textContent=""; h.className="hint"; return null; }
+  if (!d){ h.textContent="Try DD/MM/YYYY or MM/YYYY"; h.className="hint err"; return undefined; }
+  h.textContent = fmtD(d); h.className="hint ok"; return d;
 }
-function gtinHint(){
-  const g=$("enGtin").value.trim(), p=product(g);
-  if (p && !$("enName").dataset.touched) $("enName").value = p.d;
-}
-[["enExp","enExpHint","enExpPick",true],["enMfg","enMfgHint","enMfgPick",false]].forEach(([i,h,pk,req])=>{
-  $(i).addEventListener("input",()=>{ const d=dateHint(i,h,req); $(pk).value = d ? isoD(d) : ""; });
-  $(pk).addEventListener("change",e=>{ if(!e.target.value) return; $(i).value = dmy(new Date(e.target.value+"T00:00")); dateHint(i,h,req); });
+function gtinHint(){ const p=product($("enGtin").value.trim()); if (p && !$("enName").dataset.touched) $("enName").value = p.d; }
+[["enExp","enExpHint","enExpPick"],["enMfg","enMfgHint","enMfgPick"]].forEach(([i,h,pk])=>{
+  $(i).addEventListener("input",()=>{ const d=dateHint(i,h); $(pk).value = d ? isoD(d) : ""; });
+  $(pk).addEventListener("change",e=>{ if(!e.target.value) return; $(i).value = dmy(new Date(e.target.value+"T00:00")); dateHint(i,h); });
   $(pk).parentElement.addEventListener("click",()=>{ try{ $(pk).showPicker?.(); }catch{} });
 });
 $("enGtin").addEventListener("input", gtinHint);
@@ -491,47 +874,57 @@ function fillEntry(text, format){
   if (e){ $("enExp").value = dmy(e); $("enExp").dispatchEvent(new Event("input")); }
   if (m){ $("enMfg").value = dmy(m); $("enMfg").dispatchEvent(new Event("input")); }
   $("enName").dataset.touched=""; $("enName").value=""; gtinHint();
-  if (navigator.vibrate) try{navigator.vibrate(80)}catch{}
+  buzz("ok");
   if (running) stopCam();
-  const got = [a["01"]||$("enGtin").value ? "barcode":"", a["10"]?"batch":"", e?"expiry":"", m?"manufacture date":""].filter(Boolean);
-  say(got.length ? `Filled ${got.join(", ")} from the code. ${e ? "Check the details and save." : "Now type the expiry date."}`
-                 : "Code read, but it holds no barcode number or dates. Type the details below.", !got.length);
+  const got = [($("enGtin").value)?"barcode":"", a["10"]?"batch":"", e?"expiry":"", m?"manufacture date":""].filter(Boolean);
+  say(got.length ? `Filled ${got.join(", ")}. ${e ? "Check and tap Check pack." : "Now type the expiry date."}`
+                 : "That code holds no barcode number or dates. Type the details instead.", !got.length);
   (e ? $("entryForm").querySelector("[type=submit]") : $("enExp")).focus();
 }
 
 $("entryForm").addEventListener("submit", e=>{
   e.preventDefault();
-  const exp = dateHint("enExp","enExpHint",true), mfg = dateHint("enMfg","enMfgHint",false);
-  if (!exp){ if (exp===null){ $("enExpHint").textContent="Enter the expiry date."; $("enExpHint").className="hint err"; } $("enExp").focus(); return; }
+  const exp = dateHint("enExp","enExpHint"), mfg = dateHint("enMfg","enMfgHint");
+  if (!exp){ if (exp===null){ $("enExpHint").textContent="Expiry date needed"; $("enExpHint").className="hint err"; } $("enExp").focus(); return; }
   if (mfg===undefined){ $("enMfg").focus(); return; }
-  const gRaw = $("enGtin").value.replace(/\D/g,""), gt = normG(gRaw), name=$("enName").value.trim(), batch=$("enBatch").value.trim();
+  const gt = normG($("enGtin").value), name=$("enName").value.trim(), batch=$("enBatch").value.trim();
   if (gt && name && product(gt)?.d!==name){ localProducts[gt]={...(localProducts[gt]||{p:"",c:""}), d:name}; store.set("sls_products",localProducts); prodCount(); }
   const ais = {}; if (gt) ais["01"]=gt; if (batch) ais["10"]=batch;
-  const raw = (gt?`(01)${gt}`:"") + `(17)${isoD(exp).slice(2).replace(/-/g,"")}` + (mfg?`(11)${isoD(mfg).slice(2).replace(/-/g,"")}`:"") + (batch?`(10)${batch}`:"");
-  current = {raw, format:"", kind:"Manual entry", ais, text:(!gt && name) ? name : undefined, exp, mfg, example:false, logged:false};
+  const yymmdd = d => isoD(d).slice(2).replace(/-/g,"");
+  const raw = (gt?`(01)${gt}`:"") + `(17)${yymmdd(exp)}` + (mfg?`(11)${yymmdd(mfg)}`:"") + (batch?`(10)${batch}`:"");
+  current = {raw, format:"", kind:"Manual entry", ais, name:(!gt && name) ? name : "", exp, mfg, example:false, logged:false, fresh:true};
+  buzz(evaluate(exp, mfg, rules()).status);
   addToLog();
-  if (!gt && name && log[0]) { log[0].desc = name; store.set("sls_log",log); renderLog(); }
-  say("Saved. Scan or type the next pack.");
+  say("Tap Next pack when you’re ready.");
   resetEntry();
-  if (matchMedia("(max-width:899px)").matches) $("result").scrollIntoView({behavior:"smooth",block:"start"});
+  revealResult();
 });
 function resetEntry(){
   $("entryForm").reset(); $("enName").dataset.touched="";
   ["enExpHint","enMfgHint"].forEach(h=>{$(h).textContent="";$(h).className="hint";});
 }
 $("enClear").onclick = ()=>{ resetEntry(); $("enGtin").focus(); };
+$("enScan").onclick = ()=>toggleCam();
 
+const MSG = {scan:"Hold the code 10–15 cm from the camera.", manual:"Type the dates from the label, or tap the camera to fill from the barcode."};
 function setMode(m){
-  mode = m; store.set("sls_mode", m);
-  $("modeScan").setAttribute("aria-pressed", m==="scan"); $("modeManual").setAttribute("aria-pressed", m==="manual");
-  $("manualForm").hidden = m==="manual"; $("entryForm").hidden = m!=="manual";
-  $("camBtn").textContent = running ? "Stop camera" : (m==="manual" ? "Scan barcode" : "Start camera");
-  if (!$("camMsg").classList.contains("err"))
-    say(m==="manual" ? "Type the dates from the pack label. Tap “Scan barcode” to fill the barcode, batch and any dates in the code."
-                     : "Point the camera at the 2D code on the pack. Hold steady about 10–15 cm away.");
+  mode = m; store.set("sls_mode", m); document.body.dataset.mode = m;
+  $("modeScan").setAttribute("aria-pressed", String(m==="scan")); $("modeManual").setAttribute("aria-pressed", String(m==="manual"));
+  $("scanActions").hidden = $("pasteBox").hidden = m==="manual"; $("entryForm").hidden = m!=="manual";
+  if (running && m==="manual") stopCam();
+  say(MSG[m]);
 }
 $("modeScan").onclick = ()=>setMode("scan");
 $("modeManual").onclick = ()=>setMode("manual");
+
+/* Hardware barcode scanners (keyboard wedge): fast keystrokes ending in Enter, when no field has focus */
+let kb="", kbT=0;
+document.addEventListener("keydown", e=>{
+  if (e.target.closest?.("input,textarea,select,dialog") || e.ctrlKey || e.metaKey || e.altKey) return;
+  const t=performance.now(); if (t-kbT>100) kb=""; kbT=t;
+  if (e.key==="Enter"){ if (kb.length>=8){ e.preventDefault(); lastText=""; onScan(kb,""); } kb=""; return; }
+  if (e.key.length===1) kb+=e.key;
+});
 
 /* ---------- Scanner engine: CDN library (3 mirrors) with native BarcodeDetector fallback ---------- */
 const LIB_URLS = [
@@ -563,59 +956,69 @@ async function nativeDetector(){
   }catch{ return null; }
 }
 
-let scanner=null, running=false, engine=null, nativeStream=null, nativeTimer=null, lastText="", lastAt=0;
+let scanner=null, running=false, starting=false, engine=null, nativeStream=null, nativeTimer=null, lastText="", lastAt=0;
+function Lib(){ return window.Html5Qrcode || window.__Html5QrcodeLibrary__?.Html5Qrcode; }
 function formats(){
   const F = window.Html5QrcodeSupportedFormats || window.__Html5QrcodeLibrary__?.Html5QrcodeSupportedFormats; if (!F) return undefined;
   return [F.DATA_MATRIX,F.QR_CODE,F.CODE_128,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_39,F.ITF];
 }
 function onScan(text, format){
-  const now=Date.now(); if (text===lastText && now-lastAt<3000) return; lastText=text; lastAt=now;
+  const now=Date.now(); if (text===lastText && now-lastAt<8000) return; lastText=text; lastAt=now;
   if (mode==="manual"){ fillEntry(text, format||""); return; }
   handle(text, format||"");
 }
-function say(t, err=false){ const m=$("camMsg"); m.textContent=t; m.className= err?"msg err":"msg"; }
-const NO_ENGINE = "The scanner could not load and this browser has no built-in barcode reader. Check your data connection and reload, or use Chrome on Android. You can still type the code below.";
-const CAM_BLOCKED = "Camera is blocked here. Use “Scan from photo”, or open this page from your own HTTPS link (e.g. GitHub Pages) and allow camera access.";
-
+function say(t, err=false){ const m=$("camMsg"); m.textContent=t; m.className= err?"note err":"note"; }
+const NO_ENGINE = "The scanner couldn’t load and this browser has no built-in reader. Check your connection and reload, or type the code instead.";
+const CAM_BLOCKED = "Camera access is off. Allow it in your browser settings, or use Photo instead.";
+function setCamUI(on){
+  running = on; $("vf").classList.toggle("on", on);
+  $("camBtn").querySelector("span").textContent = on ? "Stop camera" : "Start camera";
+  $("camBtn").setAttribute("aria-pressed", String(on));
+}
 async function stopCam(){
   if (engine==="lib" && scanner) await scanner.stop().catch(()=>{});
   if (engine==="native"){ clearInterval(nativeTimer); nativeStream?.getTracks().forEach(t=>t.stop()); $("reader").innerHTML=""; }
-  running=false; engine=null; $("reader").hidden=true; $("camBtn").textContent= mode==="manual" ? "Scan barcode" : "Start camera";
+  engine=null; setCamUI(false);
+  if (mode==="scan" && !$("camMsg").classList.contains("err")) say(MSG.scan);
 }
-
-$("camBtn").onclick = async ()=>{
+async function toggleCam(){
+  if (starting) return;
   if (running) return stopCam();
-  say("Loading scanner…");
-  const hasLib = await libReady;
-  $("reader").hidden=false;
-  if (hasLib){
-    scanner = scanner || new (Lib())("reader", {formatsToSupport:formats(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false});
-    try{
-      await scanner.start({facingMode:"environment"}, {fps:12, qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*0.7);return {width:s,height:Math.floor(s*0.75)}}, aspectRatio:1.333},
-        (t,r)=>onScan(t, r?.result?.format?.formatName), ()=>{});
-      running=true; engine="lib"; $("camBtn").textContent="Stop camera"; say("Scanning… hold the code inside the box.");
-    }catch{ $("reader").hidden=true; say(CAM_BLOCKED, true); }
-    return;
-  }
-  const det = await nativeDetector();
-  if (!det){ $("reader").hidden=true; say(NO_ENGINE, true); return; }
+  starting = true; say("Starting camera…");
   try{
-    nativeStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment", width:{ideal:1280}}});
-    const v=document.createElement("video"); v.setAttribute("playsinline",""); v.muted=true; v.style.width="100%"; v.srcObject=nativeStream;
-    $("reader").innerHTML=""; $("reader").appendChild(v); await v.play();
-    running=true; engine="native"; $("camBtn").textContent="Stop camera"; say("Scanning with the phone's built-in reader…");
-    let busy=false;
-    nativeTimer=setInterval(async()=>{
-      if (busy||v.readyState<2) return; busy=true;
-      try{ const r=await det.detect(v); if (r[0]) onScan(r[0].rawValue, r[0].format.toUpperCase()); }catch{}
-      busy=false;
-    }, 200);
-  }catch{ $("reader").hidden=true; say(CAM_BLOCKED, true); }
-};
+    const hasLib = await libReady;
+    $("vf").classList.add("on");
+    if (hasLib){
+      scanner = scanner || new (Lib())("reader", {formatsToSupport:formats(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false});
+      try{
+        await scanner.start({facingMode:"environment"}, {fps:12, qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*0.7);return {width:s,height:Math.floor(s*0.75)}}, aspectRatio:1.333},
+          (t,r)=>onScan(t, r?.result?.format?.formatName), ()=>{});
+        engine="lib"; setCamUI(true); say(mode==="manual" ? "Point at the barcode." : "Hold the code inside the box.");
+      }catch{ setCamUI(false); say(CAM_BLOCKED, true); }
+      return;
+    }
+    const det = await nativeDetector();
+    if (!det){ setCamUI(false); say(NO_ENGINE, true); return; }
+    try{
+      nativeStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment", width:{ideal:1280}}});
+      const v=document.createElement("video"); v.setAttribute("playsinline",""); v.muted=true; v.srcObject=nativeStream;
+      $("reader").innerHTML=""; $("reader").appendChild(v); await v.play();
+      engine="native"; setCamUI(true); say(mode==="manual" ? "Point at the barcode." : "Hold the code in view.");
+      let busy=false;
+      nativeTimer=setInterval(async()=>{
+        if (busy||v.readyState<2) return; busy=true;
+        try{ const r=await det.detect(v); if (r[0]) onScan(r[0].rawValue, r[0].format.toUpperCase()); }catch{}
+        busy=false;
+      }, 200);
+    }catch{ setCamUI(false); say(CAM_BLOCKED, true); }
+  } finally { starting=false; }
+}
+$("camBtn").onclick = toggleCam;
+$("vfIdle").onclick = toggleCam;
+$("vfClose").onclick = stopCam;
 
 /* Photo decoding: native reader first, then the library on several resized/cropped versions.
    Phone photos are 8–50 MP; ZXing often misses a small DataMatrix at full size, so we downscale and crop. */
-function Lib(){ return window.Html5Qrcode || window.__Html5QrcodeLibrary__?.Html5Qrcode; }
 async function loadImage(file){
   try{ return await createImageBitmap(file, {imageOrientation:"from-image"}); }
   catch{ return await new Promise((ok,fail)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=fail; i.src=URL.createObjectURL(file); }); }
@@ -641,34 +1044,37 @@ async function decodePhoto(file){
   if (await libReady && Lib()){
     const box=$("photoTmp");
     for (const [m,cr] of plans){
-      const scanner = new (Lib())("photoTmp", {formatsToSupport:formats(), verbose:false});
-      try{ const r = await scanner.scanFileV2(await toFile(variant(img,m,cr)), false);
+      const sc = new (Lib())("photoTmp", {formatsToSupport:formats(), verbose:false});
+      try{ const r = await sc.scanFileV2(await toFile(variant(img,m,cr)), false);
            return {text:r.decodedText, format:r.result?.format?.formatName}; }
-      catch{} finally{ try{scanner.clear()}catch{} box.innerHTML=""; }
+      catch{} finally{ try{sc.clear()}catch{} box.innerHTML=""; }
     }
     return null;
   }
   if (!det) throw new Error("noengine");
   return null;
 }
-$("photo").addEventListener("change", async e=>{
+async function onPhoto(e){
   const f=e.target.files?.[0]; if(!f) return;
   say("Reading photo…");
   try{
     const r = await decodePhoto(f);
     if (r){ lastText=""; onScan(r.text, r.format); if (mode!=="manual") say("Read from photo."); }
-    else say("No code found in that photo. Fill the frame with the code, keep it sharp and avoid glare, then try again.", true);
-  }catch(err){ say(err?.message==="noengine" ? NO_ENGINE : "Could not open that photo. Try a JPG or PNG.", true); }
+    else say("No code found. Fill the frame with the code, keep it sharp, and avoid glare.", true);
+  }catch(err){ say(err?.message==="noengine" ? NO_ENGINE : "Couldn’t open that photo. Try a JPG or PNG.", true); }
   finally{ e.target.value=""; }
-});
+}
+$("photo").addEventListener("change", onPhoto);
+$("enPhoto").addEventListener("change", onPhoto);
 /* Off-screen but sized: the library needs a visible width to decode files */
 const ph=document.createElement("div"); ph.id="photoTmp";
 ph.style.cssText="position:fixed;left:-10000px;top:0;width:600px;height:450px;overflow:hidden"; ph.setAttribute("aria-hidden","true");
 document.body.appendChild(ph);
-libReady.then(ok=>{ if(!ok) nativeDetector().then(d=>say(d? "Using the phone's built-in barcode reader." : NO_ENGINE, !d)); });
+libReady.then(ok=>{ if(!ok) nativeDetector().then(d=>{ if(!d) say(NO_ENGINE, true); }); });
 
-renderLog();
+/* ---------- Start ---------- */
+setView("check");
 setMode(mode);
-/* Example on first open so the result card shows what a scan looks like */
-handle("]d2" + "0109501101530003" + "11260115" + "17290131" + "10LT2408A" + GS + "21SN0042977" , "DATA_MATRIX", true);
+render();
+renderLog();
 </script>
