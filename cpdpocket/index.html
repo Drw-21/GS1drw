@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Log CPD in seconds, keep certificates with each activity, and see if you're on track for renewal.">
+<title>CPD Pocket</title>
+<style>
+/* Design: same system as Shelf Life. One job per screen.
+   Summary = "am I on track?"  Activities = "what have I done?"  Credentials = "what expires?"
+   Phones: bottom tab bar. ≥900px: tabs move into the header. Edit forms open as sheets. */
+:root{
+  --bg:#f2f2f7; --surface:#ffffff; --fill:#f2f2f7; --fill2:#e6e6eb; --ink:#1d1d1f; --muted:#6e6e73; --faint:#8a8a8e; --line:rgba(60,60,67,.16);
+  --accent:#4b44d4; --accent-ink:#ffffff; --accent-soft:rgba(75,68,212,.10); --accent-ring:#5e5ce6;
+  --ok:#17803f; --ok-bg:#e2f5e8; --ok-ring:#34c759;
+  --warn:#9f5000; --warn-bg:#fff1db; --warn-ring:#ff9f0a;
+  --bad:#c3001a; --bad-bg:#ffe6e8; --bad-ring:#ff3b30;
+  --none-ring:#c7c7cc; --seg-on:#ffffff; --toast:rgba(28,28,30,.94); --toast-act:#a5a3ff;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.05);
+  --r-lg:20px; --r:14px;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#000000; --surface:#1c1c1e; --fill:#2c2c2e; --fill2:#3a3a3c; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(84,84,88,.55);
+  --accent:#8e8cff; --accent-ink:#0d0b3d; --accent-soft:rgba(125,122,255,.17); --accent-ring:#7d7aff;
+  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158;
+  --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a;
+  --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
+  --none-ring:#48484a; --seg-on:#636366; --toast:rgba(58,58,60,.96); --shadow:none; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#000000; --surface:#1c1c1e; --fill:#2c2c2e; --fill2:#3a3a3c; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(84,84,88,.55);
+  --accent:#8e8cff; --accent-ink:#0d0b3d; --accent-soft:rgba(125,122,255,.17); --accent-ring:#7d7aff;
+  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158;
+  --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a;
+  --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
+  --none-ring:#48484a; --seg-on:#636366; --toast:rgba(58,58,60,.96); --shadow:none; color-scheme:dark}
+
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+html{background:var(--bg);-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.4;-webkit-font-smoothing:antialiased;
+  padding:0 max(16px,env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+h1,h2,h3,p{margin:0}
+button,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* Header */
+.top{max-width:760px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:calc(20px + env(safe-area-inset-top)) 0 18px}
+.eyebrow{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+h1{font-size:34px;font-weight:700;letter-spacing:-.025em;line-height:1.1}
+.top-btns{display:flex;gap:10px}
+.icon-btn{border:0;background:var(--surface);box-shadow:var(--shadow);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--accent);flex:none}
+.icon-btn.fill{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.icon-btn:active{transform:scale(.94)}
+
+.layout{max-width:760px;margin:0 auto}
+.view{display:grid;gap:22px;align-content:start;min-width:0}
+body:not([data-view="summary"]) #viewSummary, body:not([data-view="log"]) #viewLog, body:not([data-view="creds"]) #viewCreds{display:none}
+.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+
+/* Segmented control */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--fill2);border-radius:11px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;font-size:14px;font-weight:600;padding:6px 10px;min-height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--seg-on);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
+
+/* Buttons */
+.btn{position:relative;appearance:none;border:0;font-size:17px;font-weight:600;border-radius:14px;min-height:50px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:var(--surface);color:var(--accent);box-shadow:var(--shadow);text-decoration:none;transition:transform .12s ease,opacity .2s;-webkit-tap-highlight-color:transparent}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:none}
+.btn.tinted{background:var(--accent-soft);color:var(--accent);box-shadow:none}
+.btn.plain{background:transparent;box-shadow:none;min-height:44px;padding:0 8px;font-weight:500}
+.btn.small{min-height:38px;font-size:15px;border-radius:11px;padding:0 14px}
+.btn.danger{color:var(--bad)}
+.btn .ic{width:20px;height:20px}
+.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.btn:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
+.note{font-size:15px;color:var(--muted)}
+.foot-note{display:flex;gap:6px;align-items:center;justify-content:center;font-size:13px;color:var(--faint);padding:4px 0}
+.foot-note .ic{width:15px;height:15px}
+
+/* Grouped lists */
+.group{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin:0;padding:0;list-style:none}
+.group-title{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:0 16px 7px;display:flex;justify-content:space-between;align-items:baseline}
+.group-title button{border:0;background:none;color:var(--accent);font-size:15px;font-weight:500;text-transform:none;letter-spacing:0;cursor:pointer;padding:0}
+.group-foot{font-size:13px;color:var(--muted);padding:7px 16px 0}
+.row{position:relative;display:flex;align-items:center;gap:10px;min-height:50px;padding:4px 12px 4px 16px}
+.row + .row::before,.item + .item::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--line)}
+.row > .k{flex:0 0 110px;font-size:16px}
+.row > .k .req{color:var(--bad)}
+.row .grow{flex:1;font-size:16px;min-width:0}
+.row .valtext{color:var(--muted);text-align:right}
+input,select,textarea{font-size:17px;color:var(--ink);background:var(--fill);border:0;border-radius:11px;padding:11px 14px;min-height:46px;width:100%;min-width:0}
+input::placeholder,textarea::placeholder{color:var(--faint)}
+.row input,.row select{flex:1;background:transparent;padding:10px 6px;border-radius:8px;min-height:44px}
+.row input:focus,.row select:focus{background:var(--fill)}
+.row input[type=date]{text-align:left;-webkit-appearance:none;appearance:none}
+.row select{-webkit-appearance:none;appearance:none;cursor:pointer;color:var(--accent);text-align:right}
+.row.bad > .k{color:var(--bad)}
+.row.stack{display:grid;gap:4px;padding:12px 16px}
+.row.stack label{font-size:14px;color:var(--muted)}
+.row.stack textarea{background:var(--fill);min-height:80px;resize:vertical;font-size:16px;line-height:1.4}
+.num{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.num input{width:84px;flex:none;text-align:right;background:var(--fill);font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:2px 16px 12px}
+.chip{border:0;background:var(--fill);color:var(--ink);font-size:14px;font-weight:600;border-radius:999px;padding:6px 13px;min-height:34px;cursor:pointer;font-variant-numeric:tabular-nums}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.row .seg{flex:1;max-width:240px;margin-left:auto}
+
+/* Progress hero */
+.hero{padding:20px;display:grid;gap:18px}
+.v-ok{--ring:var(--accent-ring);--tone:var(--ok);--tone-bg:var(--ok-bg)}
+.v-done{--ring:var(--ok-ring);--tone:var(--ok);--tone-bg:var(--ok-bg)}
+.v-warn{--ring:var(--warn-ring);--tone:var(--warn);--tone-bg:var(--warn-bg)}
+.v-bad{--ring:var(--bad-ring);--tone:var(--bad);--tone-bg:var(--bad-bg)}
+.v-none{--ring:var(--none-ring);--tone:var(--muted);--tone-bg:var(--fill)}
+.h-top{display:flex;gap:20px;align-items:center}
+.ring{position:relative;width:128px;height:128px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:10}
+.ring .track{stroke:var(--fill2)}
+.ring .val{stroke:var(--ring);stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)}
+.ring .pace{stroke:var(--ink);stroke-width:3;opacity:.35}
+.ring-c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ring-c b{font-size:32px;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.ring-c span{font-size:12px;color:var(--muted);margin-top:3px}
+.h-text{min-width:0}
+.label{display:inline-flex;align-items:center;gap:5px;padding:4px 11px 4px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone);font-size:14px;font-weight:600;margin-bottom:8px}
+.label .ic{width:17px;height:17px;stroke-width:2.2}
+.h-big{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.h-sub{margin-top:4px;color:var(--muted);font-size:15px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);background:var(--fill);border-radius:var(--r)}
+.stat{padding:11px 14px;display:grid;gap:1px;min-width:0}
+.stat + .stat{border-left:1px solid var(--line)}
+.stat span{font-size:12px;color:var(--muted)}
+.stat b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
+@media (max-width:400px){ .h-top{gap:14px} .ring{width:104px;height:104px} .ring-c b{font-size:26px} .h-big{font-size:19px} .stat{padding:10px} .stat b{font-size:15px} }
+.empty{padding:30px 22px;text-align:center;display:grid;gap:8px;justify-items:center}
+.empty-ic{width:60px;height:60px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:4px}
+.empty-ic .ic{width:30px;height:30px}
+.empty h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.empty p{color:var(--muted);font-size:15px;max-width:34ch}
+.empty .btn{margin-top:8px}
+
+/* Category breakdown */
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 16px;position:relative}
+.bar-row + .bar-row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--line)}
+.bar-row span{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.bar{grid-column:1/-1;height:6px;border-radius:3px;background:var(--fill2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--accent-ring)}
+
+/* Lists */
+.item{position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;min-height:62px;width:100%;border:0;background:none;text-align:left;cursor:pointer}
+.item:active{background:var(--fill)}
+.item .main{flex:1;min-width:0;display:grid}
+.item .main b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .main span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .chev{width:16px;height:16px;color:var(--faint)}
+.item + .item::before{left:62px}
+.badge-ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none;background:var(--accent-soft);color:var(--accent)}
+.badge-ic .ic{width:19px;height:19px}
+.badge-ic.t-ok{background:var(--ok-bg);color:var(--ok)} .badge-ic.t-warn{background:var(--warn-bg);color:var(--warn)} .badge-ic.t-bad{background:var(--bad-bg);color:var(--bad)}
+.pill{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums;background:var(--fill);color:var(--muted)}
+.t-ok.pill{background:var(--ok-bg);color:var(--ok)} .t-warn.pill{background:var(--warn-bg);color:var(--warn)} .t-bad.pill{background:var(--bad-bg);color:var(--bad)}
+.marks{display:flex;gap:4px;color:var(--faint)} .marks .ic{width:15px;height:15px}
+.day{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:18px 16px 7px;display:flex;justify-content:space-between}
+.day:first-child{padding-top:0}
+.list-empty{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:28px 20px;text-align:center;color:var(--muted);font-size:15px}
+.search{position:relative}
+.search .ic{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--faint)}
+.search input{padding-left:36px;background:var(--fill2);min-height:40px;font-size:16px}
+.tools{display:grid;gap:10px}
+.h-actions{display:flex;gap:8px;flex-wrap:wrap}
+.h-actions .btn{flex:1 1 auto}
+
+/* Attention */
+.att{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 16px;min-height:56px;position:relative;width:100%;border:0;background:none;text-align:left;cursor:pointer;font-size:15px}
+.att + .att::before{content:"";position:absolute;top:0;left:62px;right:0;border-top:1px solid var(--line)}
+.att .main{flex:1;min-width:0}
+.att .main b{display:block;font-weight:600;font-size:16px}
+.att .main span{color:var(--muted);font-size:13px}
+
+/* Tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);padding:4px max(16px,env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom));
+  background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line)}
+.tab{position:relative;border:0;background:none;font-size:11px;font-weight:600;color:var(--faint);display:grid;justify-items:center;gap:1px;padding:5px;min-height:50px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tab .ic{width:26px;height:26px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tbadge{position:absolute;top:2px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--bad-ring);color:#fff;font-size:11px;line-height:18px;text-align:center}
+@media (min-width:900px){
+  body{padding-bottom:48px}
+  .tabbar{position:static;max-width:760px;margin:0 auto 22px;padding:2px;border:0;border-radius:11px;background:var(--fill2);backdrop-filter:none;-webkit-backdrop-filter:none;gap:2px}
+  .tab{display:flex;justify-content:center;align-items:center;gap:6px;font-size:14px;color:var(--ink);min-height:36px;padding:6px 10px;border-radius:9px}
+  .tab .ic{width:18px;height:18px}
+  .tab[aria-current="page"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .tbadge{position:static}
+  .toast{bottom:28px!important}
+}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));z-index:60;transform:translate(-50%,16px);opacity:0;pointer-events:none;
+  display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px);padding:8px 8px 8px 16px;min-height:44px;border-radius:14px;background:var(--toast);color:#fff;font-size:15px;
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.2);transition:opacity .25s,transform .3s cubic-bezier(.2,.8,.2,1)}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{border:0;background:none;color:var(--toast-act);font-weight:600;padding:6px 10px;min-height:36px;border-radius:9px;cursor:pointer}
+
+/* Sheets */
+dialog.sheet{border:0;padding:0;background:var(--bg);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:min(88vh,860px);border-radius:22px;overflow:auto;overscroll-behavior:contain}
+dialog.sheet::backdrop{background:rgba(0,0,0,.38)}
+dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(24px)}}
+@media (max-width:599px){ dialog.sheet{margin:auto 0 0;width:100%;max-width:100%;border-radius:22px 22px 0 0;max-height:94vh;padding-bottom:env(safe-area-inset-bottom)} }
+.sheet-head{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:10px 8px;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.sheet-head h2{font-size:17px;font-weight:600;grid-column:2;text-align:center}
+.sheet-head .l{grid-column:1;justify-self:start}
+.sheet-head .r{grid-column:3;justify-self:end;font-weight:600}
+.sheet-body{padding:8px 16px 28px;display:grid;gap:24px}
+.err-msg{color:var(--bad);font-size:14px;padding:0 16px}
+.privacy{display:flex;gap:12px;padding:14px 16px;font-size:15px;color:var(--muted)}
+.privacy .ic{color:var(--accent);margin-top:1px}
+.btn-row{display:flex;gap:8px;padding:10px 16px 12px;flex-wrap:wrap}
+.btn-row .btn{flex:1 1 auto}
+.sheet-actions{display:grid;gap:10px}
+
+/* Evidence thumbnails */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:10px;padding:12px 16px}
+.thumb{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--fill);display:grid;place-items:center;text-align:center;font-size:12px;color:var(--muted)}
+.thumb img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.thumb .doc{display:grid;gap:4px;justify-items:center;padding:6px;cursor:pointer;overflow-wrap:anywhere}
+.thumb .rm{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.55);color:#fff;display:grid;place-items:center;cursor:pointer}
+.thumb .rm .ic{width:14px;height:14px;stroke-width:2.4}
+.add-ev{border:1.5px dashed var(--line);background:none;color:var(--accent);cursor:pointer;font-weight:600;font-size:13px;display:grid;gap:4px;place-items:center;align-content:center}
+.add-ev input{position:absolute;opacity:0;width:1px;height:1px}
+
+/* Image viewer */
+dialog.viewer{border:0;padding:0;background:transparent;max-width:100vw;max-height:100vh}
+dialog.viewer::backdrop{background:rgba(0,0,0,.88)}
+dialog.viewer img{max-width:94vw;max-height:88vh;border-radius:10px;display:block}
+dialog.viewer button{position:fixed;top:calc(12px + env(safe-area-inset-top));right:12px;width:40px;height:40px;border-radius:50%;border:0;background:rgba(255,255,255,.18);color:#fff;display:grid;place-items:center;cursor:pointer}
+
+/* Print report */
+#report{display:none}
+@media print{
+  @page{margin:16mm}
+  body{background:#fff;color:#000;padding:0;font-size:11pt}
+  body > *:not(#report){display:none!important}
+  #report{display:block}
+  #report h1{font-size:20pt;margin-bottom:4px}
+  #report .meta{color:#444;margin-bottom:14px}
+  #report table{width:100%;border-collapse:collapse;margin-top:10px}
+  #report th,#report td{border-bottom:1px solid #ccc;padding:6px 4px;text-align:left;vertical-align:top;font-size:10pt}
+  #report th{font-size:9pt;text-transform:uppercase;color:#444}
+  #report .refl{color:#333;font-size:9.5pt;margin-top:3px}
+  #report h2{font-size:13pt;margin:18px 0 4px}
+  #report .sum{display:flex;gap:28px;margin:8px 0}
+  #report .sum b{display:block;font-size:16pt}
+  #report tr{break-inside:avoid}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+
+<header class="top">
+  <div>
+    <p class="eyebrow" id="eyebrow">CPD Pocket</p>
+    <h1 id="title">Summary</h1>
+  </div>
+  <div class="top-btns">
+    <button class="icon-btn" id="openSettings" type="button" aria-label="Settings" data-ic="sliders"></button>
+    <button class="icon-btn fill" id="addTop" type="button" aria-label="Log activity" data-ic="plus"></button>
+  </div>
+</header>
+
+<nav class="tabbar" aria-label="Sections">
+  <button class="tab" type="button" data-view="summary" aria-current="page" data-ic="ring">Summary</button>
+  <button class="tab" type="button" data-view="log" data-ic="list">Activities</button>
+  <button class="tab" type="button" data-view="creds" data-ic="badge">Credentials<span class="tbadge" id="credBadge" hidden>0</span></button>
+</nav>
+
+<main class="layout">
+  <!-- SUMMARY -->
+  <section class="view" id="viewSummary" aria-label="Summary">
+    <div class="card" id="hero" aria-live="polite"></div>
+    <div id="attWrap" hidden>
+      <p class="group-title">Needs attention</p>
+      <div class="group" id="attList"></div>
+    </div>
+    <div id="catWrap" hidden>
+      <p class="group-title">By category <span id="catNote"></span></p>
+      <div class="group" id="catList"></div>
+    </div>
+    <div id="recentWrap" hidden>
+      <p class="group-title">Recent <button type="button" id="seeAll">See all</button></p>
+      <div class="group" id="recentList"></div>
+    </div>
+    <p class="foot-note" data-ic="lock">Everything stays in this browser on this device.</p>
+  </section>
+
+  <!-- ACTIVITIES -->
+  <section class="view" id="viewLog" aria-label="Activities">
+    <div class="tools">
+      <label class="search"><span data-ic="search"></span><input id="q" type="search" placeholder="Search activities" aria-label="Search activities" autocomplete="off"></label>
+      <div class="seg" role="group" aria-label="Filter activities" id="filterSeg">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="cycle" aria-pressed="false">This cycle</button>
+        <button type="button" data-f="todo" aria-pressed="false">Incomplete</button>
+      </div>
+    </div>
+    <div id="logList"></div>
+    <div class="h-actions">
+      <button class="btn small" type="button" id="printBtn" data-ic="doc">PDF report</button>
+      <button class="btn small" type="button" id="csvBtn" data-ic="download">Export CSV</button>
+    </div>
+  </section>
+
+  <!-- CREDENTIALS -->
+  <section class="view" id="viewCreds" aria-label="Credentials">
+    <div id="credList"></div>
+    <button class="btn tinted" type="button" id="addCred" data-ic="plus">Add credential</button>
+    <p class="group-foot" style="text-align:center">Practising licence, registration, BLS/ACLS, indemnity cover — anything with an expiry date.</p>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndo">Undo</button></div>
+
+<!-- Activity sheet -->
+<dialog class="sheet" id="actSheet" aria-labelledby="actTitle">
+  <form id="actForm" novalidate>
+    <div class="sheet-head">
+      <button class="btn plain l" type="button" data-close>Cancel</button>
+      <h2 id="actTitle">New Activity</h2>
+      <button class="btn plain r" type="submit" id="actSave">Add</button>
+    </div>
+    <div class="sheet-body">
+      <p class="err-msg" id="actErr" role="alert" hidden></p>
+      <div>
+        <ul class="group">
+          <li class="row" id="rTitle"><label class="k" for="aTitle">Title <span class="req" aria-hidden="true">*</span></label><input id="aTitle" placeholder="e.g. Antimicrobial stewardship" autocomplete="off" required></li>
+          <li class="row" id="rDate"><label class="k" for="aDate">Date <span class="req" aria-hidden="true">*</span></label><input id="aDate" type="date" required></li>
+          <li class="row"><label class="k" for="aCat">Category</label><select id="aCat"></select></li>
+          <li class="row"><label class="k" for="aProv">Provider</label><input id="aProv" placeholder="Optional" autocomplete="off" list="provList"></li>
+        </ul>
+        <datalist id="provList"></datalist>
+      </div>
+      <div>
+        <ul class="group">
+          <li class="row" id="rAmt"><label class="k" for="aAmt"><span class="unitWord">Hours</span> <span class="req" aria-hidden="true">*</span></label>
+            <span class="grow"></span><span class="num"><input id="aAmt" type="number" inputmode="decimal" min="0" step="0.25" placeholder="0"><i class="unitShort">h</i></span></li>
+        </ul>
+        <div class="chips" id="amtChips" role="group" aria-label="Quick amount"></div>
+      </div>
+      <div>
+        <p class="group-title">Certificate & evidence</p>
+        <div class="group"><div class="thumbs" id="aThumbs"></div></div>
+        <p class="group-foot">Photo or PDF. Saved with this activity so it's ready if you're audited.</p>
+      </div>
+      <div>
+        <p class="group-title">Reflection</p>
+        <div class="group">
+          <div class="row stack"><label for="aLearn">What did you learn?</label><textarea id="aLearn" rows="3"></textarea></div>
+          <div class="row stack"><label for="aApply">How will it change your practice?</label><textarea id="aApply" rows="3"></textarea></div>
+        </div>
+        <p class="group-foot">Many regulators ask for reflection on how learning affected practice, not just hours. A sentence or two now saves time later.</p>
+      </div>
+      <div class="sheet-actions" id="actExtra" hidden>
+        <button class="btn" type="button" id="actAgain" data-ic="repeat">Log again today</button>
+        <button class="btn danger" type="button" id="actDel" data-ic="trash">Delete activity</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Credential sheet -->
+<dialog class="sheet" id="credSheet" aria-labelledby="credTitle">
+  <form id="credForm" novalidate>
+    <div class="sheet-head">
+      <button class="btn plain l" type="button" data-close>Cancel</button>
+      <h2 id="credTitle">New Credential</h2>
+      <button class="btn plain r" type="submit" id="credSave">Add</button>
+    </div>
+    <div class="sheet-body">
+      <p class="err-msg" id="credErr" role="alert" hidden></p>
+      <ul class="group">
+        <li class="row" id="rCName"><label class="k" for="cName">Name <span class="req" aria-hidden="true">*</span></label><input id="cName" placeholder="e.g. Practising licence" autocomplete="off" list="credNames"></li>
+        <li class="row"><label class="k" for="cNum">Number</label><input id="cNum" placeholder="Optional" autocomplete="off"></li>
+        <li class="row"><label class="k" for="cIssued">Issued</label><input id="cIssued" type="date"></li>
+        <li class="row" id="rCExp"><label class="k" for="cExp">Expires <span class="req" aria-hidden="true">*</span></label><input id="cExp" type="date"></li>
+      </ul>
+      <datalist id="credNames"><option value="Practising licence"><option value="Professional registration"><option value="Basic Life Support (BLS)"><option value="Advanced Cardiac Life Support (ACLS)"><option value="Professional indemnity insurance"><option value="Immunisation certificate"></datalist>
+      <div>
+        <p class="group-title">Document</p>
+        <div class="group"><div class="thumbs" id="cThumbs"></div></div>
+      </div>
+      <div class="sheet-actions" id="credExtra" hidden>
+        <button class="btn" type="button" id="credCal" data-ic="calendar">Add reminder to calendar</button>
+        <button class="btn danger" type="button" id="credDel" data-ic="trash">Delete credential</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Settings sheet -->
+<dialog class="sheet" id="settings" aria-labelledby="setTitle">
+  <div class="sheet-head"><span></span><h2 id="setTitle">Settings</h2><button class="btn plain r" type="button" data-close>Done</button></div>
+  <div class="sheet-body">
+    <div>
+      <p class="group-title">Your requirement</p>
+      <div class="group">
+        <div class="row"><span class="grow">Measure in</span>
+          <div class="seg" role="group" aria-label="Unit" id="unitSeg">
+            <button type="button" data-u="hours" aria-pressed="true">Hours</button>
+            <button type="button" data-u="points" aria-pressed="false">Points</button>
+          </div>
+        </div>
+        <label class="row" for="sGoal"><span class="grow">Goal per cycle</span><span class="num"><input id="sGoal" type="number" inputmode="decimal" min="0" step="1"><i class="unitShort">h</i></span></label>
+        <label class="row" for="sStart"><span class="k">Cycle starts</span><input id="sStart" type="date"></label>
+        <label class="row" for="sEnd"><span class="k">Cycle ends</span><input id="sEnd" type="date"></label>
+      </div>
+      <p class="group-foot">Requirements differ by country, council and profession. Check yours with your regulator, then set them here.</p>
+      <div class="btn-row" style="padding:10px 0 0"><button class="btn small tinted" type="button" id="cycleCal" data-ic="calendar">Add deadline to calendar</button><button class="btn small tinted" type="button" id="nextCycle" data-ic="repeat">Start next cycle</button></div>
+    </div>
+    <div>
+      <p class="group-title">Categories</p>
+      <div class="group"><div class="row stack"><label for="sCats">One per line</label><textarea id="sCats" rows="6"></textarea></div></div>
+    </div>
+    <div>
+      <p class="group-title">For your report</p>
+      <div class="group">
+        <label class="row" for="sName"><span class="k">Name</span><input id="sName" autocomplete="name" placeholder="Optional"></label>
+        <label class="row" for="sReg"><span class="k">Reg. no.</span><input id="sReg" autocomplete="off" placeholder="Optional"></label>
+        <label class="row" for="sProf"><span class="k">Profession</span><input id="sProf" autocomplete="off" placeholder="e.g. Pharmacist"></label>
+      </div>
+    </div>
+    <div>
+      <p class="group-title">Credentials</p>
+      <div class="group"><label class="row" for="sWarn"><span class="grow">Warn before expiry</span><span class="num"><input id="sWarn" type="number" inputmode="numeric" min="1" max="365"><i>days</i></span></label></div>
+    </div>
+    <div>
+      <p class="group-title">Backup</p>
+      <div class="group">
+        <div class="row"><span class="grow">Last backup</span><span class="valtext" id="lastBk">Never</span></div>
+        <div class="btn-row">
+          <button class="btn small tinted" type="button" id="bkBtn" data-ic="download">Back up</button>
+          <label class="btn small tinted" data-ic="upload">Restore<input id="restoreFile" type="file" accept=".json,application/json"></label>
+        </div>
+      </div>
+      <p class="group-foot">Your log lives only in this browser. Clearing site data or changing phone deletes it, so save a backup file (with certificates) somewhere safe now and then.</p>
+    </div>
+    <div>
+      <p class="group-title">Appearance</p>
+      <div class="group">
+        <div class="row"><span class="grow">Theme</span>
+          <div class="seg" role="group" aria-label="Theme" id="themeSeg">
+            <button type="button" data-t="auto" aria-pressed="true">Auto</button>
+            <button type="button" data-t="light" aria-pressed="false">Light</button>
+            <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="group-title">Privacy</p>
+      <div class="group"><p class="privacy" data-ic="lock">No account and nothing uploaded. Activities, certificates and settings are stored only in this browser.</p></div>
+    </div>
+    <button class="btn danger" type="button" id="wipe" data-ic="trash">Erase all data</button>
+  </div>
+</dialog>
+
+<dialog class="viewer" id="viewer"><img id="viewerImg" alt="Evidence"><button type="button" aria-label="Close" data-close data-ic="close"></button></dialog>
+
+<div id="report"></div>
+
+<script>
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const store = { get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}} };
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const toDate = iso => { if(!/^\d{4}-\d{2}-\d{2}$/.test(iso||"")) return null; const [y,m,d]=iso.split("-").map(Number); return new Date(y,m-1,d); };
+const isoOf = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const today0 = () => { const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); };
+const days = (a,b) => Math.round((b-a)/864e5);
+const fmtD = (iso,o={day:"numeric",month:"short",year:"numeric"}) => { const d=toDate(iso); return d? d.toLocaleDateString("en-GB",o) : "—"; };
+const n2 = x => String(Math.round((+x||0)*100)/100);
+const plural = (n,w) => `${n} ${w}${n===1?"":"s"}`;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const ICONS = {
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  ring:'<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5"/>',
+  list:'<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  badge:'<rect x="4" y="3.5" width="16" height="17" rx="2.5"/><circle cx="12" cy="10" r="2.6"/><path d="M8 16.5c.8-1.6 2.2-2.4 4-2.4s3.2.8 4 2.4"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  alert:'<path d="M12 4.5 3 19.5h18z"/><path d="M12 10v4M12 17h.01"/>',
+  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>',
+  chevron:'<path d="m9 6 6 6-6 6"/>',
+  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  close:'<path d="M7 7l10 10M17 7 7 17"/>',
+  download:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  upload:'<path d="M12 15V4M7 9l5-5 5 5M5 20h14"/>',
+  doc:'<path d="M14 3.5H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-10z"/><path d="M14 3.5v5h5M9 13h6M9 16.5h6"/>',
+  clip:'<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8-8a3.3 3.3 0 0 1 4.7 4.7l-8 8a1.7 1.7 0 0 1-2.4-2.4l7.3-7.3"/>',
+  pen:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  repeat:'<path d="M17 3l3 3-3 3"/><path d="M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3"/><path d="M20 13v2a3 3 0 0 1-3 3H4"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+  book:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/>',
+  people:'<circle cx="9" cy="8.5" r="3"/><path d="M3.5 19c.8-3 2.9-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><circle cx="17" cy="9.5" r="2.4"/><path d="M16 14.6c2.3-.2 4 1.1 4.6 3.9"/>',
+  screen:'<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M8 20h8M12 16.5V20"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  cap:'<path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c1.5 1.4 3.4 2 5.5 2s4-.6 5.5-2V11"/>',
+  star:'<path d="m12 4 2.5 5.1 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z"/>'
+};
+const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
+const decorate = root => root.querySelectorAll("[data-ic]").forEach(el=>{ if(!el.dataset.icDone){ el.insertAdjacentHTML("afterbegin", ic(el.dataset.ic)); el.dataset.icDone=1; }});
+decorate(document);
+const catIcon = c => { c=(c||"").toLowerCase();
+  return /conf|seminar|symposium/.test(c)?"mic" : /e-?learn|online|webinar/.test(c)?"screen" : /read|journal|article/.test(c)?"book"
+    : /peer|discussion|meeting|journal club/.test(c)?"people" : /course|workshop|training|module/.test(c)?"cap" : /teach|present|mentor/.test(c)?"star" : "pen"; };
+
+/* ---------- Files (certificates) in IndexedDB; localStorage is too small for photos ---------- */
+const files = {
+  db:null,
+  open(){ if(!this.db) this.db = new Promise((res,rej)=>{ try{ const r=indexedDB.open("cpdpocket",1);
+      r.onupgradeneeded=()=>r.result.createObjectStore("files"); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }catch(e){ rej(e); } });
+    return this.db; },
+  async run(mode, fn){ const db=await this.open(); return new Promise((res,rej)=>{ const t=db.transaction("files",mode), r=fn(t.objectStore("files")); t.oncomplete=()=>res(r?.result); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error); }); },
+  get(id){ return this.run("readonly", s=>s.get(id)); },
+  put(id,v){ return this.run("readwrite", s=>s.put(v,id)); },
+  del(id){ return this.run("readwrite", s=>s.delete(id)); },
+  keys(){ return this.run("readonly", s=>s.getAllKeys()); },
+  clear(){ return this.run("readwrite", s=>s.clear()); }
+};
+const readAsDataURL = blob => new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
+async function toStored(file){
+  if (/^image\//.test(file.type) && !/gif|svg/.test(file.type)){
+    const url = URL.createObjectURL(file);
+    try{
+      const img = await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=rej; i.src=url; });
+      const k = Math.min(1, 1800/Math.max(img.naturalWidth,img.naturalHeight));
+      const c = document.createElement("canvas"); c.width=Math.round(img.naturalWidth*k); c.height=Math.round(img.naturalHeight*k);
+      const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(img,0,0,c.width,c.height);
+      return {name:file.name||"photo.jpg", type:"image/jpeg", data:c.toDataURL("image/jpeg",.78)};
+    } finally { URL.revokeObjectURL(url); }
+  }
+  if (file.size > 10*1024*1024) throw new Error("Files over 10 MB can't be attached.");
+  return {name:file.name||"file", type:file.type||"application/octet-stream", data:await readAsDataURL(file)};
+}
+function openFile(f){
+  if (/^image\//.test(f.type)){ $("viewerImg").src=f.data; $("viewer").showModal(); return; }
+  fetch(f.data).then(r=>r.blob()).then(b=>{ const u=URL.createObjectURL(b); const w=window.open(u,"_blank"); if(!w){ download(f.name,b); } setTimeout(()=>URL.revokeObjectURL(u),60000); });
+}
+$("viewer").addEventListener("click",()=>$("viewer").close());
+
+/* ---------- State ---------- */
+const DEFAULT_CATS = ["Course or workshop","Conference or seminar","E-learning or webinar","Reading (journal, guideline)","Peer discussion","Teaching or mentoring","Audit or quality improvement","Other"];
+const yr = new Date().getFullYear();
+let S = Object.assign({unit:"hours", goal:null, start:`${yr}-01-01`, end:`${yr}-12-31`, cats:DEFAULT_CATS, name:"", reg:"", prof:"", warn:60, lastBackup:null, theme:"auto", setup:false}, store.get("cpd_settings",{}));
+let A = store.get("cpd_acts", []);       // activities
+let C = store.get("cpd_creds", []);      // credentials
+const saveS = () => store.set("cpd_settings", S);
+function saveA(){ if(!store.set("cpd_acts",A)) toast("Couldn't save — browser storage is full or blocked."); }
+function saveC(){ if(!store.set("cpd_creds",C)) toast("Couldn't save — browser storage is full or blocked."); }
+const U = () => S.unit==="points" ? {s:"pts", w:"points", one:"point", W:"Points"} : {s:"h", w:"hours", one:"hour", W:"Hours"};
+const amt = x => `${n2(x)} ${U().s}`;
+const reflected = a => !!((a.learn||"").trim() || (a.apply||"").trim());
+const hasEv = a => (a.files||[]).length>0;
+
+/* ---------- Theme ---------- */
+function applyTheme(t){
+  if (t==="light"||t==="dark") document.documentElement.dataset.theme=t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll("#themeSeg button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.t===t)));
+}
+applyTheme(S.theme);
+$("themeSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; S.theme=b.dataset.t; saveS(); applyTheme(S.theme); });
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg, undo){
+  $("toastMsg").textContent = msg;
+  const b=$("toastUndo"); b.hidden=!undo; b.onclick=()=>{ hideToast(); undo(); };
+  $("toast").classList.add("show"); clearTimeout(toastTimer); toastTimer=setTimeout(hideToast, undo?6000:2800);
+}
+function hideToast(){ $("toast").classList.remove("show"); }
+
+/* ---------- Progress maths ---------- */
+function progress(){
+  const s=toDate(S.start), e=toDate(S.end), t=today0();
+  const inCycle = A.filter(a=>{ const d=toDate(a.date); return d && s && e && d>=s && d<=e; });
+  const logged = inCycle.reduce((x,a)=>x+(+a.amount||0),0);
+  const goal = +S.goal||0;
+  if (!s || !e || e<s) return {bad:true, logged, inCycle};
+  const total = days(s,e)+1, elapsed = Math.min(total, Math.max(0, days(s,t)+1)), left = Math.max(0, days(t,e));
+  const remain = Math.max(0, goal-logged), expected = goal*elapsed/total;
+  let st;
+  if (!goal) st="none";
+  else if (logged>=goal) st="done";
+  else if (t>e) st="over";
+  else if (t<s) st="upcoming";
+  else st = logged >= expected*0.9 ? "ok" : "behind";
+  const weeksLeft = Math.max(1/7,(left+1)/7), monthsLeft = (left+1)/30.4375;
+  return {s,e,t,logged,goal,remain,expected,total,elapsed,left,st,inCycle, perMonth:remain/Math.max(monthsLeft,1/30), perWeek:remain/weeksLeft, monthsLeft};
+}
+const STATUS = {
+  done:{cls:"v-done",icon:"check",label:"Goal met"},
+  ok:{cls:"v-ok",icon:"check",label:"On track"},
+  behind:{cls:"v-warn",icon:"clock",label:"Behind pace"},
+  over:{cls:"v-bad",icon:"alert",label:"Cycle ended"},
+  upcoming:{cls:"v-none",icon:"calendar",label:"Not started"},
+  none:{cls:"v-none",icon:"sliders",label:"No goal set"}
+};
+function credState(c){
+  const e=toDate(c.expires); if(!e) return {st:"none", txt:"No date", d:null};
+  const d=days(today0(),e);
+  if (d<0) return {st:"bad", txt:"Expired", d};
+  if (d<=(+S.warn||60)) return {st:"warn", txt: d===0?"Today": d<=31? plural(d,"day") : `${Math.round(d/30.4)} mo`, d};
+  return {st:"ok", txt: d<=62? plural(d,"day") : d<730? `${Math.round(d/30.4)} mo` : `${n2(Math.round(d/36.5)/10)} yr`, d};
+}
+
+/* ---------- Render: Summary ---------- */
+const CIRC = 2*Math.PI*52;
+function renderHero(){
+  const P = progress(), u=U();
+  if (!S.setup || !(+S.goal)){
+    $("hero").className="card";
+    $("hero").innerHTML = `<div class="empty"><div class="empty-ic">${ic("ring")}</div><h2>Set your CPD goal</h2>
+      <p>Enter the hours or points your regulator requires and your cycle dates. CPD Pocket then tells you if you're on track.</p>
+      <button class="btn primary" type="button" id="heroSetup">Set goal</button>
+      ${A.length? `<p class="note">${plural(A.length,"activity").replace("activitys","activities")} logged so far.</p>`:""}</div>`;
+    $("heroSetup").onclick = openSettings;
+    return;
+  }
+  if (P.bad){ $("hero").className="card"; $("hero").innerHTML=`<div class="empty"><h2>Check your cycle dates</h2><p>The end date must be after the start date.</p><button class="btn primary" type="button" id="heroSetup">Open settings</button></div>`; $("heroSetup").onclick=openSettings; return; }
+  const m = STATUS[P.st], frac = Math.min(1, P.logged/P.goal), paceFrac = Math.min(1,P.elapsed/P.total);
+  let big, sub;
+  if (P.st==="done"){ big = `${amt(P.logged)} logged`; sub = P.logged>P.goal ? `${amt(P.logged-P.goal)} over your ${amt(P.goal)} goal.` : `You've reached your ${amt(P.goal)} goal.`; }
+  else if (P.st==="over"){ big = `${amt(P.remain)} short`; sub = `This cycle ended ${fmtD(S.end)}. Start the next cycle in Settings.`; }
+  else if (P.st==="upcoming"){ big = `Starts ${fmtD(S.start,{day:"numeric",month:"short"})}`; sub = `Goal: ${amt(P.goal)} by ${fmtD(S.end)}.`; }
+  else {
+    big = `${amt(P.remain)} to go`;
+    sub = P.monthsLeft>=2 ? `About ${n2(Math.ceil(P.perMonth*10)/10)} ${u.s} a month to finish by ${fmtD(S.end,{day:"numeric",month:"short"})}.`
+                          : `About ${n2(Math.ceil(P.perWeek*10)/10)} ${u.s} a week to finish by ${fmtD(S.end,{day:"numeric",month:"short"})}.`;
+    if (P.st==="behind") sub += ` You'd be at ${amt(Math.round(P.expected*10)/10)} on an even pace.`;
+  }
+  const evN = P.inCycle.filter(hasEv).length;
+  $("hero").className = "card "+m.cls;
+  $("hero").innerHTML = `<div class="hero">
+    <div class="h-top">
+      <div class="ring" role="img" aria-label="${n2(P.logged)} of ${n2(P.goal)} ${u.w}">
+        <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/>
+          <circle class="val" cx="60" cy="60" r="52" stroke-dasharray="${CIRC}" stroke-dashoffset="${reduceMotion?CIRC*(1-frac):CIRC}"/>
+          ${P.st==="ok"||P.st==="behind"? `<circle class="pace" cx="60" cy="60" r="52" stroke-dasharray="1.2 ${CIRC}" stroke-dashoffset="${-CIRC*paceFrac+0.6}" stroke-width="16"/>`:""}
+        </svg>
+        <div class="ring-c"><b>${n2(Math.round(P.logged*10)/10)}</b><span>of ${n2(P.goal)} ${u.s}</span></div>
+      </div>
+      <div class="h-text"><span class="label">${ic(m.icon)}${m.label}</span><p class="h-big">${esc(big)}</p><p class="h-sub">${esc(sub)}</p></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>Days left</span><b>${P.t>P.e?"0":P.t<P.s?days(P.s,P.e)+1:P.left}</b></div>
+      <div class="stat"><span>Activities</span><b>${P.inCycle.length}</b></div>
+      <div class="stat"><span>With evidence</span><b>${evN}/${P.inCycle.length}</b></div>
+    </div>
+  </div>`;
+  const v = $("hero").querySelector(".val");
+  if (!reduceMotion) requestAnimationFrame(()=>requestAnimationFrame(()=>{ v.style.strokeDashoffset = CIRC*(1-frac); }));
+}
+
+function renderAttention(){
+  const items=[];
+  C.map(c=>({c,s:credState(c)})).filter(x=>x.s.st==="bad"||x.s.st==="warn").sort((a,b)=>a.s.d-b.s.d).forEach(({c,s})=>{
+    items.push({t:s.st, icon:"badge", title:c.name, sub: s.st==="bad"? `Expired ${fmtD(c.expires)}` : `Expires ${fmtD(c.expires)} · ${s.txt}`, go:()=>openCred(c.id)});
+  });
+  const noEv = A.filter(a=>!hasEv(a)).length, noRef = A.filter(a=>!reflected(a)).length;
+  if (noEv) items.push({t:"warn", icon:"clip", title:`${plural(noEv,"activity").replace("activitys","activities")} without evidence`, sub:"Add a certificate or photo while you still have it", go:()=>{ setFilter("todo"); setView("log"); }});
+  if (noRef) items.push({t:"warn", icon:"pen", title:`${plural(noRef,"activity").replace("activitys","activities")} without reflection`, sub:"Write a line on what changed in your practice", go:()=>{ setFilter("todo"); setView("log"); }});
+  const bkAge = S.lastBackup ? days(new Date(S.lastBackup), new Date()) : null;
+  if ((A.length||C.length) && (bkAge===null || bkAge>30)) items.push({t:"warn", icon:"download", title: bkAge===null?"Not backed up yet":`Last backup ${bkAge} days ago`, sub:"Save a backup file so your log survives a lost phone", go:backup});
+  $("attWrap").hidden = !items.length;
+  $("attList").innerHTML = items.map((x,i)=>`<button class="att" type="button" data-i="${i}"><span class="badge-ic t-${x.t}">${ic(x.icon)}</span><span class="main"><b>${esc(x.title)}</b><span>${esc(x.sub)}</span></span>${ic("chevron").replace('class="ic"','class="ic chev" style="width:16px;height:16px;color:var(--faint)"')}</button>`).join("");
+  $("attList").querySelectorAll(".att").forEach(b=>b.onclick=()=>items[+b.dataset.i].go());
+}
+
+function renderCats(){
+  const P=progress(); const list = P.inCycle || [];
+  const by={}; list.forEach(a=>{ by[a.cat||"Other"]=(by[a.cat||"Other"]||0)+(+a.amount||0); });
+  const rows = Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  $("catWrap").hidden = !rows.length;
+  const max = Math.max(...rows.map(r=>r[1]),0.0001);
+  $("catNote").textContent = "This cycle";
+  $("catNote").style.cssText="text-transform:none;letter-spacing:0";
+  $("catList").innerHTML = rows.map(([c,v])=>`<div class="bar-row"><span>${esc(c)}</span><b>${amt(v)}</b><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%"></i></div></div>`).join("");
+}
+
+function actRow(a){
+  return `<button class="item" type="button" data-id="${a.id}">
+    <span class="badge-ic">${ic(catIcon(a.cat))}</span>
+    <span class="main"><b>${esc(a.title)}</b><span>${fmtD(a.date,{day:"numeric",month:"short"})} · ${esc(a.cat||"Other")}${a.provider?" · "+esc(a.provider):""}</span></span>
+    <span class="marks">${hasEv(a)?`<span title="Has evidence">${ic("clip")}</span>`:""}${reflected(a)?`<span title="Has reflection">${ic("pen")}</span>`:""}</span>
+    <span class="pill">+${amt(a.amount)}</span>
+  </button>`;
+}
+const byDate = (a,b) => (b.date||"").localeCompare(a.date||"") || (b.created||0)-(a.created||0);
+function renderRecent(){
+  const r=[...A].sort(byDate).slice(0,4);
+  $("recentWrap").hidden=!r.length;
+  $("recentList").innerHTML = r.map(actRow).join("");
+  $("recentList").querySelectorAll(".item").forEach(b=>b.onclick=()=>openAct(b.dataset.id));
+}
+
+/* ---------- Render: Activities ---------- */
+let filter="all";
+function setFilter(f){ filter=f; document.querySelectorAll("#filterSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.f===f))); renderLog(); }
+$("filterSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(b) setFilter(b.dataset.f); });
+$("q").addEventListener("input",()=>renderLog());
+function renderLog(){
+  const q=$("q").value.trim().toLowerCase(), s=toDate(S.start), e=toDate(S.end);
+  let list=[...A].sort(byDate);
+  if (filter==="cycle") list=list.filter(a=>{const d=toDate(a.date); return d&&s&&e&&d>=s&&d<=e;});
+  if (filter==="todo") list=list.filter(a=>!hasEv(a)||!reflected(a));
+  if (q) list=list.filter(a=>[a.title,a.provider,a.cat,a.learn,a.apply].join(" ").toLowerCase().includes(q));
+  if (!list.length){
+    $("logList").innerHTML = !A.length
+      ? `<div class="card empty"><div class="empty-ic">${ic("list")}</div><h2>No activities yet</h2><p>Log a course, conference, webinar or reading in about 20 seconds.</p><button class="btn primary" type="button" data-new>Log activity</button></div>`
+      : `<div class="list-empty">${filter==="todo"&&!q?"Every activity has evidence and a reflection.":"No matching activities."}</div>`;
+    $("logList").querySelector("[data-new]")?.addEventListener("click",()=>openAct());
+    return;
+  }
+  const groups={}; list.forEach(a=>{ const k=(a.date||"").slice(0,7); (groups[k]=groups[k]||[]).push(a); });
+  $("logList").innerHTML = Object.entries(groups).map(([k,items])=>{
+    const tot = items.reduce((x,a)=>x+(+a.amount||0),0);
+    const label = k? new Date(+k.slice(0,4), +k.slice(5,7)-1, 1).toLocaleDateString("en-GB",{month:"long",year:"numeric"}) : "No date";
+    return `<p class="day"><span>${label}</span><span>${amt(tot)}</span></p><div class="group">${items.map(actRow).join("")}</div>`;
+  }).join("");
+  $("logList").querySelectorAll(".item").forEach(b=>b.onclick=()=>openAct(b.dataset.id));
+}
+
+/* ---------- Render: Credentials ---------- */
+function renderCreds(){
+  const list = C.map(c=>({c,s:credState(c)})).sort((a,b)=>(a.s.d??1e9)-(b.s.d??1e9));
+  const due = list.filter(x=>x.s.st==="bad"||x.s.st==="warn").length;
+  $("credBadge").hidden=!due; $("credBadge").textContent=due;
+  if (!list.length){
+    $("credList").innerHTML = `<div class="card empty"><div class="empty-ic">${ic("badge")}</div><h2>Never miss a renewal</h2><p>Add your licence and certifications. You'll see a warning ${S.warn||60} days before each one expires.</p></div>`;
+    return;
+  }
+  $("credList").innerHTML = `<div class="group">${list.map(({c,s})=>`<button class="item" type="button" data-id="${c.id}">
+      <span class="badge-ic ${s.st==="ok"?"":"t-"+s.st}">${ic("badge")}</span>
+      <span class="main"><b>${esc(c.name)}</b><span>${s.st==="bad"?"Expired":"Expires"} ${fmtD(c.expires)}${c.number?" · "+esc(c.number):""}</span></span>
+      ${(c.files||[]).length?`<span class="marks">${ic("clip")}</span>`:""}
+      <span class="pill t-${s.st}">${s.txt}</span></button>`).join("")}</div>`;
+  $("credList").querySelectorAll(".item").forEach(b=>b.onclick=()=>openCred(b.dataset.id));
+}
+
+function renderAll(){
+  renderHero(); renderAttention(); renderCats(); renderRecent(); renderLog(); renderCreds();
+  const P=progress();
+  $("eyebrow").textContent = S.setup && !P.bad ? `Cycle ends ${fmtD(S.end)}` : "CPD Pocket";
+  document.querySelectorAll(".unitShort").forEach(el=>el.textContent=U().s);
+  document.querySelectorAll(".unitWord").forEach(el=>el.textContent=U().W);
+  $("provList").innerHTML = [...new Set(A.map(a=>a.provider).filter(Boolean))].slice(0,50).map(p=>`<option value="${esc(p)}">`).join("");
+}
+
+/* ---------- Navigation ---------- */
+const TITLES = {summary:"Summary", log:"Activities", creds:"Credentials"};
+function setView(v){
+  document.body.dataset.view=v; $("title").textContent=TITLES[v];
+  document.querySelectorAll(".tab").forEach(t=>{ if(t.dataset.view===v) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
+  window.scrollTo(0,0);
+  try{ history.replaceState(null,"","#"+v); }catch{}
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>setView(t.dataset.view)));
+$("seeAll").onclick=()=>{ setFilter("all"); setView("log"); };
+$("addTop").onclick=()=> document.body.dataset.view==="creds" ? openCred() : openAct();
+$("addCred").onclick=()=>openCred();
+document.querySelectorAll("dialog").forEach(d=>{
+  d.addEventListener("click",e=>{ if(e.target===d && d.classList.contains("sheet")) d.close(); });
+  d.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>d.close()));
+});
+
+/* ---------- Evidence editor (shared by both sheets) ---------- */
+function evidenceEditor(wrapId){
+  const ed = { keep:[], added:[], removed:[] };   // keep: existing ids; added: {id,file}; removed: ids
+  ed.load = async ids => { ed.keep=[...(ids||[])]; ed.added=[]; ed.removed=[]; await ed.draw(); };
+  ed.draw = async () => {
+    const w=$(wrapId);
+    const tiles = [];
+    for (const id of ed.keep){ let f=null; try{ f=await files.get(id); }catch{} tiles.push({id, f, old:true}); }
+    ed.added.forEach(x=>tiles.push({id:x.id, f:x.file}));
+    w.innerHTML = tiles.map(t=>`<div class="thumb" data-id="${t.id}">${!t.f?"Missing": /^image\//.test(t.f.type)? `<img src="${t.f.data}" alt="${esc(t.f.name)}">` : `<span class="doc">${ic("doc")}${esc(t.f.name)}</span>`}
+      <button class="rm" type="button" aria-label="Remove">${ic("close")}</button></div>`).join("")
+      + `<label class="thumb add-ev">${ic("camera")}<span>Add photo<br>or PDF</span><input type="file" accept="image/*,application/pdf" multiple></label>`;
+    w.querySelectorAll(".thumb[data-id]").forEach(el=>{
+      const t = tiles.find(x=>x.id===el.dataset.id);
+      el.querySelector(".rm").onclick=()=>{ if(t.old){ ed.keep=ed.keep.filter(i=>i!==t.id); ed.removed.push(t.id);} else ed.added=ed.added.filter(x=>x.id!==t.id); ed.draw(); };
+      el.querySelector("img,.doc")?.addEventListener("click",()=>t.f&&openFile(t.f));
+    });
+    w.querySelector("input").onchange = async e=>{
+      for (const f of e.target.files){ try{ ed.added.push({id:"f"+uid(), file:await toStored(f)}); }catch(err){ toast(err.message||"Couldn't read that file."); } }
+      ed.draw();
+    };
+  };
+  ed.commit = async () => {
+    for (const x of ed.added) await files.put(x.id, x.file);
+    for (const id of ed.removed) await files.del(id).catch(()=>{});
+    return [...ed.keep, ...ed.added.map(x=>x.id)];
+  };
+  return ed;
+}
+const actEv = evidenceEditor("aThumbs"), credEv = evidenceEditor("cThumbs");
+
+/* ---------- Activity sheet ---------- */
+let editingAct=null;
+function fillCats(sel){
+  const cats=[...S.cats]; if (sel && !cats.includes(sel)) cats.push(sel);
+  $("aCat").innerHTML = cats.map(c=>`<option${c===sel?" selected":""}>${esc(c)}</option>`).join("");
+}
+function chips(){
+  const vals = S.unit==="points" ? [1,2,5,10,15] : [0.5,1,2,3,7];
+  $("amtChips").innerHTML = vals.map(v=>`<button type="button" class="chip" data-v="${v}" aria-pressed="${+$("aAmt").value===v}">${v} ${U().s}</button>`).join("");
+}
+$("amtChips").addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return; $("aAmt").value=b.dataset.v; chips(); });
+$("aAmt").addEventListener("input",chips);
+async function openAct(id, preset){
+  const a = id ? A.find(x=>x.id===id) : null; editingAct = a ? a.id : null;
+  const src = a || preset || {};
+  $("actTitle").textContent = a? "Activity" : "New Activity"; $("actSave").textContent = a? "Save":"Add";
+  $("aTitle").value=src.title||""; $("aDate").value=src.date||isoOf(today0()); $("aProv").value=src.provider||"";
+  $("aAmt").value = src.amount ?? ""; $("aLearn").value=src.learn||""; $("aApply").value=src.apply||"";
+  const lastCat = [...A].sort((x,y)=>(y.created||0)-(x.created||0))[0]?.cat;
+  fillCats(src.cat || lastCat || S.cats[0]);
+  chips(); $("actErr").hidden=true; ["rTitle","rDate","rAmt"].forEach(r=>$(r).classList.remove("bad"));
+  $("actExtra").hidden=!a;
+  await actEv.load(a? a.files : []);
+  $("actSheet").showModal(); $("actSheet").scrollTop=0;
+  if (!a && matchMedia("(pointer:fine)").matches) $("aTitle").focus();
+}
+$("actForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const title=$("aTitle").value.trim(), date=$("aDate").value, amount=parseFloat($("aAmt").value);
+  const bad = {rTitle:!title, rDate:!toDate(date), rAmt:!(amount>0)};
+  Object.entries(bad).forEach(([r,b])=>$(r).classList.toggle("bad",b));
+  if (Object.values(bad).some(Boolean)){
+    $("actErr").textContent = !title? "Add a title." : !toDate(date)? "Pick a date." : `Enter ${U().w} greater than 0.`;
+    $("actErr").hidden=false; $("actSheet").scrollTop=0; return;
+  }
+  let ids; try{ ids = await actEv.commit(); }catch{ toast("Couldn't save the attachment — storage may be full."); return; }
+  const rec = {title, date, amount, cat:$("aCat").value, provider:$("aProv").value.trim(), learn:$("aLearn").value.trim(), apply:$("aApply").value.trim(), files:ids};
+  if (editingAct){ Object.assign(A.find(x=>x.id===editingAct), rec); toast("Saved"); }
+  else { A.push({id:"a"+uid(), created:Date.now(), ...rec}); toast(`Logged +${amt(amount)}`); }
+  saveA(); $("actSheet").close(); renderAll();
+});
+$("actDel").onclick=()=>{
+  const i=A.findIndex(x=>x.id===editingAct); if(i<0) return;
+  const [gone]=A.splice(i,1); saveA(); $("actSheet").close(); renderAll();
+  // keep files until the undo window passes
+  const t=setTimeout(()=>(gone.files||[]).forEach(id=>files.del(id).catch(()=>{})), 6500);
+  toast("Activity deleted", ()=>{ clearTimeout(t); A.splice(i,0,gone); saveA(); renderAll(); });
+};
+$("actAgain").onclick=()=>{
+  const a=A.find(x=>x.id===editingAct); if(!a) return;
+  $("actSheet").close(); openAct(null, {title:a.title, cat:a.cat, provider:a.provider, amount:a.amount});
+};
+
+/* ---------- Credential sheet ---------- */
+let editingCred=null;
+async function openCred(id){
+  const c = id ? C.find(x=>x.id===id) : null; editingCred = c? c.id : null;
+  $("credTitle").textContent = c? "Credential":"New Credential"; $("credSave").textContent = c? "Save":"Add";
+  $("cName").value=c?.name||""; $("cNum").value=c?.number||""; $("cIssued").value=c?.issued||""; $("cExp").value=c?.expires||"";
+  $("credErr").hidden=true; ["rCName","rCExp"].forEach(r=>$(r).classList.remove("bad"));
+  $("credExtra").hidden=!c;
+  await credEv.load(c? c.files: []);
+  $("credSheet").showModal(); $("credSheet").scrollTop=0;
+}
+$("credForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const name=$("cName").value.trim(), expires=$("cExp").value, issued=$("cIssued").value;
+  const bad={rCName:!name, rCExp:!toDate(expires)}; Object.entries(bad).forEach(([r,b])=>$(r).classList.toggle("bad",b));
+  if (bad.rCName||bad.rCExp){ $("credErr").textContent = !name?"Add a name.":"Pick the expiry date."; $("credErr").hidden=false; return; }
+  if (issued && toDate(issued) && toDate(issued)>toDate(expires)){ $("credErr").textContent="Issue date is after the expiry date."; $("credErr").hidden=false; return; }
+  let ids; try{ ids=await credEv.commit(); }catch{ toast("Couldn't save the attachment — storage may be full."); return; }
+  const rec={name, number:$("cNum").value.trim(), issued, expires, files:ids};
+  if (editingCred) Object.assign(C.find(x=>x.id===editingCred),rec); else C.push({id:"c"+uid(), created:Date.now(), ...rec});
+  saveC(); $("credSheet").close(); renderAll(); toast(editingCred?"Saved":"Credential added");
+});
+$("credDel").onclick=()=>{
+  const i=C.findIndex(x=>x.id===editingCred); if(i<0) return;
+  const [gone]=C.splice(i,1); saveC(); $("credSheet").close(); renderAll();
+  const t=setTimeout(()=>(gone.files||[]).forEach(id=>files.del(id).catch(()=>{})), 6500);
+  toast("Credential deleted", ()=>{ clearTimeout(t); C.splice(i,0,gone); saveC(); renderAll(); });
+};
+$("credCal").onclick=()=>{
+  const c=C.find(x=>x.id===editingCred); if(!c) return;
+  ics(`${c.name} expires`, c.expires, Math.max(7,+S.warn||60), `Renew ${c.name}${c.number?" ("+c.number+")":""}. Added by CPD Pocket.`, "renewal-"+c.name);
+};
+
+/* ---------- Calendar (.ics) — works with Apple, Google and Outlook calendars ---------- */
+function ics(summary, iso, alarmDays, desc, file){
+  const d=toDate(iso); if(!d) return;
+  const next=new Date(d); next.setDate(d.getDate()+1);
+  const f = x=>isoOf(x).replace(/-/g,""), e = s=>String(s).replace(/[\\;,]/g,m=>"\\"+m).replace(/\n/g,"\\n");
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const body = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//CPD Pocket//EN","CALSCALE:GREGORIAN","BEGIN:VEVENT",
+    `UID:${uid()}@cpdpocket`,`DTSTAMP:${stamp}`,`DTSTART;VALUE=DATE:${f(d)}`,`DTEND;VALUE=DATE:${f(next)}`,`SUMMARY:${e(summary)}`,`DESCRIPTION:${e(desc)}`,
+    "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${e(summary)}`,`TRIGGER:-P${alarmDays}D`,"END:VALARM",
+    "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${e(summary)}`,"TRIGGER:-P7D","END:VALARM",
+    "END:VEVENT","END:VCALENDAR"].join("\r\n");
+  download(file.replace(/[^\w-]+/g,"-").toLowerCase()+".ics", new Blob([body],{type:"text/calendar"}));
+}
+function download(name, blob){
+  const u=URL.createObjectURL(blob), a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u), 30000);
+}
+
+/* ---------- Settings ---------- */
+function openSettings(){
+  $("sGoal").value = S.goal ?? ""; $("sStart").value=S.start; $("sEnd").value=S.end; $("sCats").value=S.cats.join("\n");
+  $("sName").value=S.name; $("sReg").value=S.reg; $("sProf").value=S.prof; $("sWarn").value=S.warn;
+  document.querySelectorAll("#unitSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.u===S.unit)));
+  $("lastBk").textContent = S.lastBackup ? new Date(S.lastBackup).toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "Never";
+  $("settings").showModal(); $("settings").scrollTop=0;
+  if (!S.setup && matchMedia("(pointer:fine)").matches) $("sGoal").focus();
+}
+$("openSettings").onclick=openSettings;
+$("unitSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; S.unit=b.dataset.u; saveS();
+  document.querySelectorAll("#unitSeg button").forEach(x=>x.setAttribute("aria-pressed",String(x===b))); renderAll(); });
+$("sGoal").addEventListener("input",()=>{ const v=parseFloat($("sGoal").value); S.goal = v>0? v : null; if (S.goal) S.setup=true; saveS(); renderAll(); });
+["sStart","sEnd"].forEach(id=>$(id).addEventListener("change",()=>{ if(toDate($(id).value)){ S[id==="sStart"?"start":"end"]=$(id).value; saveS(); renderAll(); } }));
+$("sCats").addEventListener("change",()=>{ const c=[...new Set($("sCats").value.split("\n").map(s=>s.trim()).filter(Boolean))]; S.cats=c.length?c:DEFAULT_CATS; saveS(); });
+[["sName","name"],["sReg","reg"],["sProf","prof"]].forEach(([id,k])=>$(id).addEventListener("input",()=>{ S[k]=$(id).value.trim(); saveS(); }));
+$("sWarn").addEventListener("input",()=>{ const v=parseInt($("sWarn").value); if(v>0){ S.warn=v; saveS(); renderAll(); } });
+$("cycleCal").onclick=()=>ics("CPD cycle deadline", S.end, 30, `Goal: ${S.goal?amt(S.goal):"—"}. Logged so far: ${amt(progress().logged)}.`, "cpd-deadline");
+$("nextCycle").onclick=()=>{
+  const s=toDate(S.start), e=toDate(S.end); if(!s||!e||e<s) return;
+  const prev={start:S.start,end:S.end}, len=days(s,e)+1;
+  const ns=new Date(e); ns.setDate(e.getDate()+1);
+  // keep calendar-aligned cycles aligned (e.g. 1 Jan–31 Dec → next year)
+  const yrs = Math.round(len/365.25);
+  let ne;
+  if (yrs>=1 && Math.abs(len-yrs*365.25)<3) ne=new Date(ns.getFullYear()+yrs, ns.getMonth(), ns.getDate()-1);
+  else { ne=new Date(ns); ne.setDate(ns.getDate()+len-1); }
+  S.start=isoOf(ns); S.end=isoOf(ne); saveS(); $("sStart").value=S.start; $("sEnd").value=S.end; renderAll();
+  toast(`Next cycle: ${fmtD(S.start)} – ${fmtD(S.end)}`, ()=>{ Object.assign(S,prev); saveS(); $("sStart").value=S.start; $("sEnd").value=S.end; renderAll(); });
+};
+
+/* ---------- Backup / restore ---------- */
+async function backup(){
+  const out = {app:"cpdpocket", version:1, exported:new Date().toISOString(), settings:S, activities:A, credentials:C, files:{}};
+  try{ for (const id of await files.keys()) out.files[id] = await files.get(id); }catch{}
+  const stamp=isoOf(today0());
+  download(`cpdpocket-backup-${stamp}.json`, new Blob([JSON.stringify(out)],{type:"application/json"}));
+  S.lastBackup=new Date().toISOString(); saveS(); renderAll();
+  if ($("settings").open) $("lastBk").textContent = fmtD(isoOf(today0()));
+  toast("Backup saved to your downloads");
+}
+$("bkBtn").onclick=backup;
+$("restoreFile").onchange = async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  let data; try{ data=JSON.parse(await f.text()); }catch{ toast("That isn't a CPD Pocket backup."); return; }
+  if (data?.app!=="cpdpocket" || !Array.isArray(data.activities)){ toast("That isn't a CPD Pocket backup."); return; }
+  if (!confirm(`Replace what's here with this backup from ${new Date(data.exported).toLocaleDateString("en-GB")}? (${data.activities.length} activities, ${(data.credentials||[]).length} credentials)`)) return;
+  try{ await files.clear(); for (const [id,v] of Object.entries(data.files||{})) await files.put(id,v); }catch{ toast("Certificates couldn't be restored in this browser."); }
+  A=data.activities; C=data.credentials||[]; S=Object.assign({},S,data.settings||{}); saveA(); saveC(); saveS();
+  applyTheme(S.theme); openSettings(); renderAll(); toast("Backup restored");
+};
+$("wipe").onclick=async()=>{
+  if (!confirm("Erase all activities, credentials, certificates and settings from this browser? Back up first if you might need them.")) return;
+  A=[]; C=[]; S={unit:"hours",goal:null,start:`${yr}-01-01`,end:`${yr}-12-31`,cats:DEFAULT_CATS,name:"",reg:"",prof:"",warn:60,lastBackup:null,theme:"auto",setup:false};
+  saveA(); saveC(); saveS(); try{ await files.clear(); }catch{}
+  applyTheme("auto"); $("settings").close(); renderAll(); setView("summary"); toast("All data erased");
+};
+
+/* ---------- CSV + printable report ---------- */
+function csvCell(v){ v=String(v??""); return /[",\n]/.test(v)? `"${v.replace(/"/g,'""')}"` : v; }
+$("csvBtn").onclick=()=>{
+  if(!A.length){ toast("Nothing to export yet."); return; }
+  const head=["Date","Title","Category","Provider",U().W,"Evidence files","What I learned","Impact on practice"];
+  const rows=[...A].sort(byDate).reverse().map(a=>[a.date,a.title,a.cat,a.provider,n2(a.amount),(a.files||[]).length,a.learn,a.apply]);
+  download(`cpd-activities-${isoOf(today0())}.csv`, new Blob(["﻿"+[head,...rows].map(r=>r.map(csvCell).join(",")).join("\r\n")],{type:"text/csv"}));
+};
+$("printBtn").onclick=()=>{
+  const P=progress(), s=toDate(S.start), e=toDate(S.end);
+  const list=A.filter(a=>{const d=toDate(a.date); return d&&s&&e&&d>=s&&d<=e;}).sort(byDate).reverse();
+  if(!list.length){ toast("No activities in this cycle to report."); return; }
+  const who=[S.name,S.prof,S.reg&&("Reg. no. "+S.reg)].filter(Boolean).map(esc).join(" · ");
+  $("report").innerHTML = `<h1>CPD record</h1>
+    <p class="meta">${who?who+"<br>":""}Cycle ${fmtD(S.start)} – ${fmtD(S.end)} · Generated ${fmtD(isoOf(today0()))}</p>
+    <div class="sum"><div><b>${amt(P.logged)}</b>Logged</div><div><b>${S.goal?amt(S.goal):"—"}</b>Goal</div><div><b>${list.length}</b>Activities</div><div><b>${list.filter(hasEv).length}</b>With evidence</div></div>
+    <table><thead><tr><th>Date</th><th>Activity</th><th>Category</th><th>${U().W}</th><th>Evidence</th></tr></thead><tbody>
+    ${list.map(a=>`<tr><td>${fmtD(a.date)}</td><td><b>${esc(a.title)}</b>${a.provider?"<br>"+esc(a.provider):""}
+      ${a.learn?`<div class="refl"><i>Learned:</i> ${esc(a.learn)}</div>`:""}${a.apply?`<div class="refl"><i>Impact:</i> ${esc(a.apply)}</div>`:""}</td>
+      <td>${esc(a.cat||"")}</td><td>${n2(a.amount)}</td><td>${(a.files||[]).length?((a.files.length)+" file"+(a.files.length>1?"s":"")):"—"}</td></tr>`).join("")}
+    </tbody></table>`;
+  window.print();
+};
+
+/* ---------- Boot ---------- */
+const startView = (location.hash||"").slice(1);
+setView(TITLES[startView]? startView : "summary");
+renderAll();
+window.addEventListener("pageshow",renderAll);
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) renderAll(); });
+</script>
