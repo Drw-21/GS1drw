@@ -5,8 +5,16 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Shelf Life">
+<meta name="application-name" content="Shelf Life Scanner">
+<meta name="author" content="Lumetis Pharma">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="description" content="Scan a pack and see how much shelf life it has left.">
-<title>Shelf Life Scanner</title>
+<title>Shelf Life Scanner · Lumetis Pharma</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Design: one clear job per screen. Check a pack (scan or type) → get a verdict.
@@ -52,8 +60,9 @@ button{font:inherit;color:inherit}
 
 /* Header */
 .top{max-width:1120px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:calc(20px + env(safe-area-inset-top)) 0 18px}
-.eyebrow{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
-h1{font-size:34px;font-weight:700;letter-spacing:-.025em;line-height:1.1}
+.eyebrow{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.eyebrow img{width:20px;height:20px;border-radius:5px}
+h1{font-size:clamp(26px,7.4vw,34px);font-weight:700;letter-spacing:-.025em;line-height:1.1}
 .icon-btn{border:0;background:var(--surface);box-shadow:var(--shadow);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--accent);flex:none}
 .icon-btn:active{transform:scale(.94)}
 
@@ -271,8 +280,8 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
 
 <header class="top">
   <div>
-    <p class="eyebrow" id="today"></p>
-    <h1>Shelf Life</h1>
+    <p class="eyebrow"><img src="icons/icon.svg" alt="">Lumetis Pharma</p>
+    <h1>Shelf Life Scanner</h1>
   </div>
   <button class="icon-btn" id="openSettings" type="button" aria-label="Settings" data-ic="sliders"></button>
 </header>
@@ -357,7 +366,7 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
 
     <section class="card" id="result" aria-live="polite" aria-label="Result"></section>
 
-    <p class="foot-note" data-ic="lock">Everything stays on this device.</p>
+    <p class="foot-note" data-ic="lock">Everything stays on this device · Lumetis Pharma</p>
   </section>
 
   <section class="view" id="viewHistory" aria-labelledby="hTitle">
@@ -431,6 +440,14 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
       <p class="group-title">Privacy</p>
       <div class="group"><p class="privacy" data-ic="lock">Your history, product names and settings are saved only in this browser on this device. Nothing is uploaded. The camera is used only while you scan, and turns off when you leave the Check tab.</p></div>
       <p class="group-foot">Dates are read per GS1 General Specifications (YYMMDD; day 00 = last day of the month).</p>
+    </div>
+    <div>
+      <p class="group-title">About</p>
+      <div class="group">
+        <div class="row" style="gap:14px;padding-block:12px"><img src="icons/icon.svg" alt="" width="44" height="44" style="border-radius:11px;flex:none">
+          <span class="grow"><b style="font-weight:600">Shelf Life Scanner</b><br><span class="valtext" style="font-size:14px">by Lumetis Pharma</span></span></div>
+      </div>
+      <p class="group-foot">Tip: add this page to your home screen (Share → Add to Home Screen on iPhone, or ⋮ → Add to Home screen on Android) to open it like an app.</p>
     </div>
   </div>
 </dialog>
@@ -554,7 +571,6 @@ const ICONS = {
 const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
 document.querySelectorAll("[data-ic]").forEach(el=>el.insertAdjacentHTML("afterbegin", ic(el.dataset.ic)));
 
-$("today").textContent = new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"});
 
 /* ---------- Appearance ---------- */
 function applyTheme(t){
