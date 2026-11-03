@@ -143,6 +143,12 @@ details.paste summary::-webkit-details-marker{display:none}
 .mini:active{transform:scale(.92)}
 @media (max-width:380px){ .row > .k{flex-basis:88px;font-size:15px} }
 .entry{display:grid;gap:12px}
+.dmy{display:flex;align-items:center;gap:3px;padding:4px 0;min-width:0;max-width:240px}
+.dmy input{flex:2 1 0;width:0;min-width:0;text-align:center;background:var(--fill);padding:8px 2px;min-height:42px;font-variant-numeric:tabular-nums}
+.dmy input[id$="Y"]{flex-grow:3}
+.dmy .sep{color:var(--faint);font-size:16px;flex:none}
+.row:has(.dmy) > .k{flex-basis:76px}
+@media (max-width:360px){ .row:has(.dmy){gap:6px;padding-right:6px} .row:has(.dmy) > .k{flex-basis:58px;font-size:15px} .dmy{gap:2px} .dmy input{font-size:16px;padding:8px 0} .dmy .sep{font-size:13px} .row:has(.dmy) .mini{width:34px;height:34px} }
 .entry .actions{grid-template-columns:1.6fr 1fr}
 
 /* Result */
@@ -275,7 +281,7 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
   <section class="view" id="viewCheck" aria-label="Check a pack">
     <div class="seg" role="group" aria-label="How to check">
       <button type="button" id="modeScan" aria-pressed="true" data-ic="scan">Scan</button>
-      <button type="button" id="modeManual" aria-pressed="false" data-ic="keyboard">Type dates</button>
+      <button type="button" id="modeManual" aria-pressed="false" data-ic="keyboard">Type</button>
     </div>
 
     <div class="vf" id="vf">
@@ -320,19 +326,31 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
       </div>
       <div>
         <ul class="group">
-          <li class="row"><label class="k" for="enExp">Expiry <span class="req" aria-hidden="true">*</span></label>
-            <span class="val"><input id="enExp" inputmode="numeric" autocomplete="off" placeholder="DD/MM/YYYY" aria-describedby="enExpHint" required><span class="hint" id="enExpHint" aria-live="polite"></span></span>
+          <li class="row"><span class="k" id="enExpLbl">Expiry <span class="req" aria-hidden="true">*</span></span>
+            <span class="val"><span class="dmy" id="enExp" role="group" aria-labelledby="enExpLbl" aria-describedby="enExpHint">
+              <input id="enExpD" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="DD" aria-label="Expiry day (optional)">
+              <span class="sep" aria-hidden="true">/</span>
+              <input id="enExpM" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="MM" aria-label="Expiry month">
+              <span class="sep" aria-hidden="true">/</span>
+              <input id="enExpY" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="YYYY" aria-label="Expiry year">
+            </span><span class="hint" id="enExpHint" aria-live="polite"></span></span>
             <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enExpPick" aria-label="Pick expiry date from calendar" tabindex="-1"></span>
           </li>
-          <li class="row"><label class="k" for="enMfg">Made</label>
-            <span class="val"><input id="enMfg" inputmode="numeric" autocomplete="off" placeholder="Optional" aria-describedby="enMfgHint"><span class="hint" id="enMfgHint" aria-live="polite"></span></span>
+          <li class="row"><span class="k" id="enMfgLbl">Made</span>
+            <span class="val"><span class="dmy" id="enMfg" role="group" aria-labelledby="enMfgLbl" aria-describedby="enMfgHint">
+              <input id="enMfgD" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="DD" aria-label="Manufacture day (optional)">
+              <span class="sep" aria-hidden="true">/</span>
+              <input id="enMfgM" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="MM" aria-label="Manufacture month">
+              <span class="sep" aria-hidden="true">/</span>
+              <input id="enMfgY" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="YYYY" aria-label="Manufacture year">
+            </span><span class="hint" id="enMfgHint" aria-live="polite"></span></span>
             <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enMfgPick" aria-label="Pick manufacture date from calendar" tabindex="-1"></span>
           </li>
         </ul>
-        <p class="group-foot">Month-only dates like 11/2027 count as the last day of the month. Add the manufacture date to see % shelf life left.</p>
+        <p class="group-foot">Leave the day empty for month-only dates (e.g. EXP 11/2027); they count as the last day of the month. Add the manufacture date to see % shelf life left.</p>
       </div>
       <div class="actions">
-        <button class="btn primary" type="submit">Check pack</button>
+        <button class="btn primary" type="submit">Check</button>
         <button class="btn" type="button" id="enClear">Clear</button>
       </div>
     </form>
@@ -833,7 +851,6 @@ $("manualForm").addEventListener("submit", e=>{ e.preventDefault(); const v=$("m
 /* ---------- Manual date entry (optionally with a scanned barcode) ---------- */
 let mode = store.get("sls_mode","scan")==="manual" ? "manual" : "scan";
 const MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
-const dmy = d => d ? `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}` : "";
 /* Accepts DD/MM/YYYY, DD-MM-YY, DD.MM.YYYY, YYYY-MM-DD, MM/YYYY, YYYY-MM, DDMMYYYY, "30 Nov 2027", "Nov 2027".
    Month-only = last day of that month. Day-first order. */
 function parseUserDate(str){
@@ -850,17 +867,61 @@ function parseUserDate(str){
     const mo = MONTHS.indexOf(m[2])+1; return mo ? mk(+m[3], mo, m[1]?+m[1]:null) : null; }
   return null;
 }
-function dateHint(inId, hintId){
-  const v=$(inId).value.trim(), d=parseUserDate(v), h=$(hintId);
-  if (!v){ h.textContent=""; h.className="hint"; return null; }
-  if (!d){ h.textContent="Try DD/MM/YYYY or MM/YYYY"; h.className="hint err"; return undefined; }
-  h.textContent = fmtD(d); h.className="hint ok"; return d;
+/* Day / month / year boxes. Day may be left empty (month-only date). */
+const part = (k,p) => $(k+p);
+function readDate(k){
+  const d=part(k,"D").value.trim(), m=part(k,"M").value.trim(), y=part(k,"Y").value.trim();
+  if (!d && !m && !y) return null;
+  if (!m || !(y.length===2 || y.length===4)) return undefined;
+  return parseUserDate(d ? `${d}/${m}/${y}` : `${m}/${y}`) || undefined;
+}
+function writeDate(k, date){
+  part(k,"D").value = date ? String(date.getDate()).padStart(2,"0") : "";
+  part(k,"M").value = date ? String(date.getMonth()+1).padStart(2,"0") : "";
+  part(k,"Y").value = date ? String(date.getFullYear()) : "";
+  dateHint(k, k+"Hint", true); $(k+"Pick").value = date ? isoD(date) : "";
+}
+/* strict=false while typing: don't nag about a half-typed date */
+function dateHint(k, hintId, strict){
+  const d=readDate(k), h=$(hintId), y=part(k,"Y").value.trim();
+  if (d===null){ h.textContent=""; h.className="hint"; return null; }
+  if (d===undefined){
+    if (strict || y.length===4){ h.textContent = part(k,"M").value ? "Not a real date" : "Month and year needed"; h.className="hint err"; }
+    else { h.textContent=""; h.className="hint"; }
+    return undefined;
+  }
+  h.textContent = fmtD(d) + (part(k,"D").value ? "" : " (end of month)"); h.className="hint ok"; return d;
 }
 function gtinHint(){ const p=product($("enGtin").value.trim()); if (p && !$("enName").dataset.touched) $("enName").value = p.d; }
-[["enExp","enExpHint","enExpPick"],["enMfg","enMfgHint","enMfgPick"]].forEach(([i,h,pk])=>{
-  $(i).addEventListener("input",()=>{ const d=dateHint(i,h); $(pk).value = d ? isoD(d) : ""; });
-  $(pk).addEventListener("change",e=>{ if(!e.target.value) return; $(i).value = dmy(new Date(e.target.value+"T00:00")); dateHint(i,h); });
-  $(pk).parentElement.addEventListener("click",()=>{ try{ $(pk).showPicker?.(); }catch{} });
+["enExp","enMfg"].forEach(k=>{
+  const D=part(k,"D"), M=part(k,"M"), Y=part(k,"Y"), pk=$(k+"Pick"), order=[D,M,Y];
+  const update = () => { const d=dateHint(k, k+"Hint", false); pk.value = d ? isoD(d) : ""; };
+  order.forEach((el,i)=>{
+    el.addEventListener("input", ()=>{
+      let v = el.value.replace(/\D/g,""); el.value = v;
+      /* auto-advance: 2 digits, or a first digit that can't start a 2-digit day (4-9) / month (2-9) */
+      if (i<2 && v.length===1 && +v > (i===0?3:1)) { el.value = "0"+v; v = el.value; }
+      if (i<2 && v.length===2) order[i+1].focus();
+      update();
+    });
+    el.addEventListener("keydown", e=>{
+      if (e.key==="Backspace" && !el.value && i>0){ e.preventDefault(); const p=order[i-1]; p.focus(); p.value=p.value.slice(0,-1); update(); }
+      else if (["/",".","-"," "].includes(e.key) && i<2){ e.preventDefault(); if (el.value.length===1) el.value="0"+el.value; order[i+1].focus(); update(); }
+      else if (e.key==="ArrowLeft" && i>0 && el.selectionStart===0){ e.preventDefault(); order[i-1].focus(); }
+      else if (e.key==="ArrowRight" && i<2 && el.selectionStart===el.value.length){ e.preventDefault(); order[i+1].focus(); }
+    });
+    /* Pasting a whole date ("30/11/2027", "Nov 2027") into any box fills all three */
+    el.addEventListener("paste", e=>{
+      const t=(e.clipboardData||window.clipboardData)?.getData("text")||"";
+      const s=t.trim(); if (!/\D/.test(s) && s.length<=4) return;   /* plain digits for this box: let it paste */
+      const d=parseUserDate(s); if (!d) return;
+      e.preventDefault(); writeDate(k,d);
+      const monthOnly = /^\d{1,2}[-\/. ]\d{2,4}$|^\d{4}[-\/.]\d{1,2}$|^[a-z]{3,}\.?[\s\-\/.,]*\d{2,4}$/i.test(s.replace(/^(exp|expiry|mfg|mfd)[:.\s]*/i,""));
+      if (monthOnly){ D.value=""; dateHint(k,k+"Hint",true); }
+    });
+  });
+  pk.addEventListener("change", e=>{ if (e.target.value) writeDate(k, new Date(e.target.value+"T00:00")); });
+  pk.parentElement.addEventListener("click", ()=>{ try{ pk.showPicker?.(); }catch{} });
 });
 $("enGtin").addEventListener("input", gtinHint);
 $("enName").addEventListener("input", ()=>{ $("enName").dataset.touched = $("enName").value ? "1" : ""; });
@@ -871,22 +932,22 @@ function fillEntry(text, format){
   else if (/^\d{8,14}$/.test(String(text).trim())) $("enGtin").value = String(text).trim();
   if (a["10"]) $("enBatch").value = a["10"];
   const e = a["17"] && gs1Date(a["17"]), m = a["11"] && gs1Date(a["11"]);
-  if (e){ $("enExp").value = dmy(e); $("enExp").dispatchEvent(new Event("input")); }
-  if (m){ $("enMfg").value = dmy(m); $("enMfg").dispatchEvent(new Event("input")); }
+  if (e) writeDate("enExp", e);
+  if (m) writeDate("enMfg", m);
   $("enName").dataset.touched=""; $("enName").value=""; gtinHint();
   buzz("ok");
   if (running) stopCam();
   const got = [($("enGtin").value)?"barcode":"", a["10"]?"batch":"", e?"expiry":"", m?"manufacture date":""].filter(Boolean);
-  say(got.length ? `Filled ${got.join(", ")}. ${e ? "Check and tap Check pack." : "Now type the expiry date."}`
+  say(got.length ? `Filled ${got.join(", ")}. ${e ? "Review and tap Check." : "Now type the expiry date."}`
                  : "That code holds no barcode number or dates. Type the details instead.", !got.length);
-  (e ? $("entryForm").querySelector("[type=submit]") : $("enExp")).focus();
+  (e ? $("entryForm").querySelector("[type=submit]") : $("enExpD")).focus();
 }
 
 $("entryForm").addEventListener("submit", e=>{
   e.preventDefault();
-  const exp = dateHint("enExp","enExpHint"), mfg = dateHint("enMfg","enMfgHint");
-  if (!exp){ if (exp===null){ $("enExpHint").textContent="Expiry date needed"; $("enExpHint").className="hint err"; } $("enExp").focus(); return; }
-  if (mfg===undefined){ $("enMfg").focus(); return; }
+  const exp = dateHint("enExp","enExpHint",true), mfg = dateHint("enMfg","enMfgHint",true);
+  if (!exp){ if (exp===null){ $("enExpHint").textContent="Expiry date needed"; $("enExpHint").className="hint err"; } (part("enExp","M").value ? part("enExp","Y") : part("enExp","M").value===""&&part("enExp","D").value ? part("enExp","M") : $("enExpD")).focus(); return; }
+  if (mfg===undefined){ $("enMfgM").focus(); return; }
   const gt = normG($("enGtin").value), name=$("enName").value.trim(), batch=$("enBatch").value.trim();
   if (gt && name && product(gt)?.d!==name){ localProducts[gt]={...(localProducts[gt]||{p:"",c:""}), d:name}; store.set("sls_products",localProducts); prodCount(); }
   const ais = {}; if (gt) ais["01"]=gt; if (batch) ais["10"]=batch;
@@ -902,6 +963,7 @@ $("entryForm").addEventListener("submit", e=>{
 function resetEntry(){
   $("entryForm").reset(); $("enName").dataset.touched="";
   ["enExpHint","enMfgHint"].forEach(h=>{$(h).textContent="";$(h).className="hint";});
+  ["enExpPick","enMfgPick"].forEach(id=>$(id).value="");
 }
 $("enClear").onclick = ()=>{ resetEntry(); $("enGtin").focus(); };
 $("enScan").onclick = ()=>toggleCam();
