@@ -299,7 +299,7 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
 
     <div class="actions" id="scanActions">
       <button class="btn primary" id="camBtn" type="button" data-ic="camera"><span>Start camera</span></button>
-      <label class="btn" data-ic="photo">Photo<input id="photo" type="file" accept="image/*" capture="environment"></label>
+      <label class="btn" data-ic="photo">Photo<input id="photo" type="file" accept="image/*"></label>
     </div>
 
     <p class="note" id="camMsg" role="status">Hold the code 10–15 cm from the camera.</p>
@@ -318,7 +318,7 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
           <li class="row"><label class="k" for="enGtin">Barcode</label>
             <span class="val"><input id="enGtin" inputmode="numeric" autocomplete="off" placeholder="Optional"></span>
             <button class="mini" type="button" id="enScan" aria-label="Scan barcode with camera" data-ic="camera"></button>
-            <label class="mini" aria-label="Read barcode from a photo" data-ic="photo"><input id="enPhoto" type="file" accept="image/*" capture="environment" aria-label="Read barcode from a photo"></label>
+            <label class="mini" aria-label="Read barcode from a photo" data-ic="photo"><input id="enPhoto" type="file" accept="image/*" aria-label="Read barcode from a photo"></label>
           </li>
           <li class="row"><label class="k" for="enName">Product</label><span class="val"><input id="enName" autocomplete="off" placeholder="Optional"></span></li>
           <li class="row"><label class="k" for="enBatch">Batch</label><span class="val"><input id="enBatch" autocomplete="off" placeholder="Optional"></span></li>
