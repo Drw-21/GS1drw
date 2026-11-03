@@ -2,1157 +2,698 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<title>Shelf Life Scanner · Lumetis Pharma</title>
+<meta name="description" content="Scan the GS1 DataMatrix on a medicine pack and see in a second how much shelf life is left, and whether it meets your receiving rules. Free, in your browser, nothing uploaded.">
+<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Shelf Life">
-<meta name="application-name" content="Shelf Life Scanner">
 <meta name="author" content="Lumetis Pharma">
+<meta property="og:title" content="Shelf Life Scanner · Lumetis Pharma">
+<meta property="og:description" content="Know what’s good to go. Scan a pack, see the shelf life left, accept with confidence.">
+<meta property="og:image" content="icons/icon-512.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-<link rel="icon" href="icons/icon-192.png" type="image/png" sizes="192x192">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="description" content="Scan a pack and see how much shelf life it has left.">
-<title>Shelf Life Scanner · Lumetis Pharma</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<script>
+  /* Opened from the home-screen icon? Go straight to the scanner. */
+  if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) location.replace("app/");
+</script>
 <style>
-/* Design: one clear job per screen. Check a pack (scan or type) → get a verdict.
-   Phones: bottom tab bar (Check / History), settings in a sheet. ≥900px: Check and History side by side. */
 :root{
-  --bg:#f2f2f7; --surface:#ffffff; --fill:#f2f2f7; --fill2:#e6e6eb; --ink:#1d1d1f; --muted:#6e6e73; --faint:#8a8a8e; --line:rgba(60,60,67,.16);
-  --accent:#0a7d6c; --accent-ink:#ffffff; --accent-soft:rgba(10,125,108,.10);
-  --ok:#17803f; --ok-bg:#e2f5e8; --ok-ring:#34c759;
-  --warn:#9f5000; --warn-bg:#fff1db; --warn-ring:#ff9f0a;
-  --bad:#c3001a; --bad-bg:#ffe6e8; --bad-ring:#ff3b30;
-  --none-ring:#c7c7cc; --seg-on:#ffffff; --toast:rgba(28,28,30,.94);
-  --shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px rgba(0,0,0,.05);
-  --r-lg:20px; --r:14px;
-  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --bg:#ffffff; --bg2:#f5f5f7; --surface:#ffffff; --ink:#1d1d1f; --muted:#6e6e73; --faint:#86868b; --line:rgba(0,0,0,.1);
+  --accent:#0a7d6c; --accent-2:#14a38b; --accent-ink:#fff; --accent-soft:rgba(10,125,108,.10);
+  --ok:#17803f; --ok-bg:#e2f5e8; --ok-ring:#34c759; --warn:#9f5000; --warn-bg:#fff1db; --warn-ring:#ff9f0a; --bad:#c3001a; --bad-bg:#ffe6e8; --bad-ring:#ff3b30;
+  --c1:#0a7d6c; --c2:#c2410c; --c3:#6d28d9; --c4:#be185d; --c5:#1d4ed8;
+  --shadow:0 2px 6px rgba(0,0,0,.04),0 18px 50px rgba(0,0,0,.08);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#000000; --surface:#1c1c1e; --fill:#2c2c2e; --fill2:#3a3a3c; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(84,84,88,.55);
-  --accent:#3cc9b0; --accent-ink:#00201a; --accent-soft:rgba(60,201,176,.15);
-  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158;
-  --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a;
-  --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
-  --none-ring:#48484a; --seg-on:#636366; --toast:rgba(58,58,60,.96); --shadow:none; color-scheme:dark}}
+  --bg:#000; --bg2:#101012; --surface:#1c1c1e; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(255,255,255,.12);
+  --accent:#3cc9b0; --accent-2:#5ee6cd; --accent-ink:#00201a; --accent-soft:rgba(60,201,176,.14);
+  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158; --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a; --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
+  --c1:#3cc9b0; --c2:#fb923c; --c3:#a78bfa; --c4:#f472b6; --c5:#60a5fa;
+  --shadow:0 0 0 1px rgba(255,255,255,.06); color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#000000; --surface:#1c1c1e; --fill:#2c2c2e; --fill2:#3a3a3c; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(84,84,88,.55);
-  --accent:#3cc9b0; --accent-ink:#00201a; --accent-soft:rgba(60,201,176,.15);
-  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158;
-  --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a;
-  --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
-  --none-ring:#48484a; --seg-on:#636366; --toast:rgba(58,58,60,.96); --shadow:none; color-scheme:dark}
+  --bg:#000; --bg2:#101012; --surface:#1c1c1e; --ink:#f5f5f7; --muted:#a1a1a6; --faint:#8e8e93; --line:rgba(255,255,255,.12);
+  --accent:#3cc9b0; --accent-2:#5ee6cd; --accent-ink:#00201a; --accent-soft:rgba(60,201,176,.14);
+  --ok:#4cd77a; --ok-bg:rgba(48,209,88,.16); --ok-ring:#30d158; --warn:#ffb340; --warn-bg:rgba(255,159,10,.17); --warn-ring:#ff9f0a; --bad:#ff6b63; --bad-bg:rgba(255,69,58,.17); --bad-ring:#ff453a;
+  --c1:#3cc9b0; --c2:#fb923c; --c3:#a78bfa; --c4:#f472b6; --c5:#60a5fa;
+  --shadow:0 0 0 1px rgba(255,255,255,.06); color-scheme:dark}
 
 *,*::before,*::after{box-sizing:border-box}
-[hidden]{display:none!important}
-html{background:var(--bg);-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.4;-webkit-font-smoothing:antialiased;
-  padding:0 max(16px,env(safe-area-inset-right)) calc(100px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+html{scroll-behavior:smooth;scroll-padding-top:72px;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.5;-webkit-font-smoothing:antialiased}
 h1,h2,h3,p{margin:0}
-button{font:inherit;color:inherit}
-:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+a{color:var(--accent)}
+img{max-width:100%}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left));padding-right:max(20px,env(safe-area-inset-right))}
+.skip{position:absolute;left:-9999px;top:8px;background:var(--surface);padding:8px 12px;border-radius:8px;z-index:100}
+.skip:focus{left:12px}
 
-/* Header */
-.top{max-width:1120px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:calc(20px + env(safe-area-inset-top)) 0 18px}
-.eyebrow{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
-.eyebrow img{width:20px;height:20px;border-radius:5px}
-h1{font-size:clamp(26px,7.4vw,34px);font-weight:700;letter-spacing:-.025em;line-height:1.1}
-.icon-btn{border:0;background:var(--surface);box-shadow:var(--shadow);width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--accent);flex:none}
-.icon-btn:active{transform:scale(.94)}
-
-/* Layout */
-.layout{max-width:1120px;margin:0 auto;display:grid;gap:20px;grid-template-columns:minmax(0,1fr)}
-.view{display:grid;gap:14px;align-content:start;min-width:0}
-.card{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow)}
-@media (max-width:899px){
-  body[data-view="history"] #viewCheck, body[data-view="check"] #viewHistory{display:none}
-}
-@media (min-width:900px){
-  body{padding-bottom:48px}
-  .layout{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:28px;align-items:start}
-  .tabbar{display:none!important}
-  .toast{bottom:28px!important}
-  .h-title{display:flex!important}
-}
-
-/* Segmented control */
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--fill2);border-radius:11px;padding:2px;gap:2px}
-.seg button{border:0;background:transparent;font-size:14px;font-weight:600;padding:6px 10px;min-height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:background .2s}
-.seg button .ic{width:18px;height:18px}
-.seg button[aria-pressed="true"]{background:var(--seg-on);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
-
-/* Viewfinder */
-.vf{position:relative;border-radius:var(--r-lg);overflow:hidden;background:#0b0f0e;aspect-ratio:4/3;max-height:52vh;width:100%}
-.vf.on{aspect-ratio:auto;max-height:none}
-.vf:not(.on) #reader{display:none}
-#reader{width:100%;background:#000}
-#reader video{display:block;width:100%!important;max-height:62vh;object-fit:cover}
-body[data-mode="manual"] .vf:not(.on){display:none}
-.vf-idle{position:absolute;inset:0;width:100%;border:0;cursor:pointer;color:#fff;display:grid;place-items:center;align-content:center;gap:6px;text-align:center;padding:16px;
-  background:radial-gradient(120% 90% at 50% 0%,#1f3a34 0%,#0b0f0e 70%)}
-.vf.on .vf-idle{display:none}
-.brackets{width:min(58%,260px);height:auto;color:rgba(255,255,255,.92);margin-bottom:8px;animation:breathe 2.8s ease-in-out infinite}
-.brackets .beam{stroke:var(--ok-ring);stroke-width:2;opacity:.9;animation:beam 2.8s ease-in-out infinite}
-@keyframes breathe{50%{transform:scale(1.035)}}
-@keyframes beam{0%,100%{transform:translateY(-22px);opacity:0}20%,80%{opacity:.9}50%{transform:translateY(22px)}}
-.vf-idle b{font-size:19px;font-weight:600}
-.vf-idle span{font-size:13px;opacity:.7}
-.vf-close{position:absolute;top:10px;right:10px;z-index:3;width:36px;height:36px;border-radius:50%;border:0;display:none;place-items:center;cursor:pointer;color:#fff;background:rgba(0,0,0,.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-.vf.on .vf-close{display:grid}
-
-/* Buttons */
-.btn{position:relative;appearance:none;border:0;font-size:17px;font-weight:600;border-radius:14px;min-height:50px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:var(--surface);color:var(--accent);box-shadow:var(--shadow);text-decoration:none;transition:transform .12s ease,opacity .2s;-webkit-tap-highlight-color:transparent}
+/* Nav */
+nav.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+nav.top .wrap{display:flex;align-items:center;gap:20px;height:56px}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink);font-weight:600;font-size:16px;letter-spacing:-.01em;white-space:nowrap}
+.brand img{width:28px;height:28px;border-radius:7px}
+.navlinks{display:flex;gap:22px;margin-left:auto;font-size:14px}
+.navlinks a{color:var(--muted);text-decoration:none}
+.navlinks a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:999px;font-size:16px;font-weight:600;text-decoration:none;border:0;cursor:pointer;transition:transform .15s ease,background .2s}
 .btn:active{transform:scale(.97)}
-.btn[disabled]{opacity:.4;cursor:default;transform:none}
-.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:none}
-.btn.tinted{background:var(--accent-soft);color:var(--accent);box-shadow:none}
-.btn.plain{background:transparent;box-shadow:none;min-height:44px;padding:0 8px;font-weight:500}
-.btn.small{min-height:38px;font-size:15px;border-radius:11px;padding:0 14px}
-.btn.danger{color:var(--bad)}
-.btn input[type=file]{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
-.btn:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
-.actions{display:grid;grid-template-columns:1.6fr 1fr;gap:10px}
-.note{font-size:15px;color:var(--muted);text-align:center;padding:0 8px}
-.note.err{color:var(--bad)}
-.foot-note{display:flex;gap:6px;align-items:center;justify-content:center;font-size:13px;color:var(--faint);padding:4px 0}
-.foot-note .ic{width:15px;height:15px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{background:color-mix(in srgb,var(--accent) 88%,#000)}
+.btn.ghost{color:var(--accent);background:var(--accent-soft)}
+.btn.sm{min-height:36px;padding:0 16px;font-size:14px}
+nav .btn{margin-left:0}
+@media (max-width:820px){ .navlinks{display:none} nav .btn{margin-left:auto} }
 
-/* Inputs */
-input{font:inherit;font-size:17px;color:var(--ink);background:var(--fill);border:0;border-radius:11px;padding:11px 14px;min-height:46px;width:100%;min-width:0}
-input::placeholder{color:var(--faint)}
-details.paste summary{list-style:none;cursor:pointer;color:var(--accent);font-size:15px;font-weight:500;text-align:center;padding:6px}
-details.paste summary::-webkit-details-marker{display:none}
-.inline{display:flex;gap:8px;margin-top:8px}
-.inline input{background:var(--surface);box-shadow:var(--shadow)}
-.inline input{font-family:var(--mono);font-size:15px}
+/* Hero */
+.hero{padding:72px 0 40px;overflow:hidden;position:relative}
+.hero::before{content:"";position:absolute;inset:-40% -20% auto;height:640px;background:radial-gradient(50% 60% at 50% 40%,var(--accent-soft),transparent 70%);pointer-events:none}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;position:relative}
+.eyebrow{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.02em;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.hero h1{font-size:clamp(42px,7vw,76px);line-height:1.02;letter-spacing:-.035em;font-weight:700}
+.hero h1 span{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lead{font-size:clamp(18px,2.2vw,22px);color:var(--muted);margin-top:20px;max-width:34ch;line-height:1.45}
+.cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.cta .btn{min-height:50px;padding:0 26px;font-size:17px}
+.chips{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:26px;font-size:14px;color:var(--muted)}
+.chips span{display:inline-flex;align-items:center;gap:6px}
+.chips svg{width:16px;height:16px;color:var(--ok-ring)}
+@media (max-width:860px){ .hero{padding-top:44px} .hero .wrap{grid-template-columns:1fr;gap:40px} .phone{margin:0 auto} }
 
-/* Grouped lists (iOS-style) */
-.group{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin:0;padding:0;list-style:none}
-.group-title{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:0 16px 7px}
-.group-foot{font-size:13px;color:var(--muted);padding:7px 16px 0}
-.row{position:relative;display:flex;align-items:center;gap:10px;min-height:52px;padding:4px 8px 4px 16px}
-.row + .row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:1px solid var(--line)}
-.row > .k{flex:0 0 108px;font-size:16px}
-.row > .k .req{color:var(--bad)}
-.row .val{flex:1;min-width:0;display:grid}
-.row input{background:transparent;padding:10px 6px;border-radius:8px;min-height:44px}
-.row input:focus{background:var(--fill)}
-.row .hint{font-size:12px;color:var(--muted);padding:0 6px 6px;min-height:0}
-.row .hint:empty{display:none}
-.hint.ok{color:var(--ok)} .hint.err{color:var(--bad)}
-.mini{position:relative;width:38px;height:38px;border-radius:50%;border:0;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;cursor:pointer;flex:none;overflow:hidden}
-.mini .ic{width:20px;height:20px}
-.mini input{position:absolute;inset:0;opacity:0;cursor:pointer;min-height:0;padding:0}
-.mini:active{transform:scale(.92)}
-@media (max-width:380px){ .row > .k{flex-basis:88px;font-size:15px} }
-.entry{display:grid;gap:12px}
-.dmy{display:flex;align-items:center;gap:3px;padding:4px 0;min-width:0;max-width:240px}
-.dmy input{flex:2 1 0;width:0;min-width:0;text-align:center;background:var(--fill);padding:8px 2px;min-height:42px;font-variant-numeric:tabular-nums}
-.dmy input[id$="Y"]{flex-grow:3}
-.dmy .sep{color:var(--faint);font-size:16px;flex:none}
-.row:has(.dmy) > .k{flex-basis:76px}
-@media (max-width:360px){ .row:has(.dmy){gap:6px;padding-right:6px} .row:has(.dmy) > .k{flex-basis:58px;font-size:15px} .dmy{gap:2px} .dmy input{font-size:16px;padding:8px 0} .dmy .sep{font-size:13px} .row:has(.dmy) .mini{width:34px;height:34px} }
-.entry .actions{grid-template-columns:1.6fr 1fr}
+/* Phone mockup */
+.phone{width:min(320px,86vw);aspect-ratio:9/18.5;border-radius:48px;background:#0b0b0c;padding:12px;box-shadow:var(--shadow),0 30px 80px rgba(10,125,108,.18);position:relative;justify-self:center}
+.screen{width:100%;height:100%;border-radius:38px;background:#f2f2f7;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:46px 14px 14px;color:#1d1d1f;font-size:13px}
+.phone::after{content:"";position:absolute;top:22px;left:50%;transform:translateX(-50%);width:90px;height:26px;border-radius:14px;background:#0b0b0c}
+.m-head{display:flex;justify-content:space-between;align-items:flex-end}
+.m-head small{font-size:9px;font-weight:600;color:#6e6e73;text-transform:uppercase;letter-spacing:.06em}
+.m-head b{display:block;font-size:19px;letter-spacing:-.02em}
+.m-seg{display:grid;grid-template-columns:1fr 1fr;background:#e6e6eb;border-radius:8px;padding:2px;font-size:11px;font-weight:600;text-align:center}
+.m-seg span{padding:4px}.m-seg span:first-child{background:#fff;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.m-vf{border-radius:14px;background:radial-gradient(120% 90% at 50% 0%,#1f3a34,#0b0f0e 70%);aspect-ratio:4/3;display:grid;place-items:center;position:relative;overflow:hidden}
+.m-vf svg{width:56%}
+.m-dm{position:absolute;width:30%;aspect-ratio:1;background-image:conic-gradient(#fff 25%,#0b0f0e 0 50%,#fff 0 75%,#0b0f0e 0);background-size:16% 16%;border-left:3px solid #fff;border-bottom:3px solid #fff;opacity:.9;border-radius:2px}
+.m-card{background:#fff;border-radius:16px;padding:12px;display:grid;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.m-top{display:flex;gap:10px;align-items:center}
+.m-ring{position:relative;width:70px;height:70px;flex:none}
+.m-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.m-ring circle{fill:none;stroke-width:9}
+.m-ring .t{stroke:#e6e6eb}.m-ring .v{stroke:var(--ok-ring);stroke-linecap:round;stroke-dasharray:276.5;stroke-dashoffset:276.5;transition:stroke-dashoffset 1.6s cubic-bezier(.2,.8,.2,1) .3s}
+.in .m-ring .v{stroke-dashoffset:72}
+.m-ring div{position:absolute;inset:0;display:grid;place-content:center;text-align:center;line-height:1}
+.m-ring b{font-size:18px}.m-ring span{font-size:8px;color:#6e6e73;margin-top:2px}
+.m-pill{display:inline-block;background:#e2f5e8;color:#17803f;font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px;margin-bottom:4px}
+.m-prod{font-weight:700;font-size:14px;line-height:1.2}
+.m-sub{color:#6e6e73;font-size:10.5px}
+.m-stats{display:grid;grid-template-columns:repeat(3,1fr);background:#f2f2f7;border-radius:10px;font-size:9px;color:#6e6e73}
+.m-stats div{padding:6px 8px}.m-stats div+div{border-left:1px solid rgba(60,60,67,.16)}
+.m-stats b{display:block;color:#1d1d1f;font-size:11.5px}
+.m-btns{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;font-weight:600;text-align:center}
+.m-btns span{padding:8px;border-radius:10px;background:#0a7d6c;color:#fff}.m-btns span+span{background:rgba(10,125,108,.1);color:#0a7d6c}
 
-/* Result */
-#result{overflow:hidden;scroll-margin:16px}
-.empty{padding:30px 22px;text-align:center;display:grid;gap:6px;justify-items:center}
-.empty-ic{width:60px;height:60px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:6px}
-.empty-ic .ic{width:30px;height:30px}
-.empty h2{font-size:20px;font-weight:700;letter-spacing:-.01em}
-.empty p{color:var(--muted);font-size:15px;max-width:30ch}
-.verdict{padding:20px;display:grid;gap:18px;animation:rise .4s cubic-bezier(.2,.8,.2,1)}
-@keyframes rise{from{opacity:0;transform:translateY(10px)}}
-.v-ok{--ring:var(--ok-ring);--tone:var(--ok);--tone-bg:var(--ok-bg)}
-.v-warn{--ring:var(--warn-ring);--tone:var(--warn);--tone-bg:var(--warn-bg)}
-.v-bad{--ring:var(--bad-ring);--tone:var(--bad);--tone-bg:var(--bad-bg)}
-.v-none{--ring:var(--none-ring);--tone:var(--muted);--tone-bg:var(--fill)}
-.v-top{display:flex;gap:18px;align-items:center}
-.ring{position:relative;width:116px;height:116px;flex:none}
-.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring circle{fill:none;stroke-width:9}
-.ring .track{stroke:var(--fill2)}
-.ring .val{stroke:var(--ring);stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1)}
-.ring-c{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
-.ring-c b{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
-.ring-c span{font-size:12px;color:var(--muted);margin-top:3px}
-.v-text{min-width:0}
-.v-label{display:inline-flex;align-items:center;gap:5px;padding:4px 11px 4px 8px;border-radius:999px;background:var(--tone-bg);color:var(--tone);font-size:14px;font-weight:600;margin-bottom:8px}
-.v-label .ic{width:17px;height:17px;stroke-width:2.2}
-.v-prod{font-size:21px;font-weight:700;letter-spacing:-.015em;line-height:1.2;overflow-wrap:anywhere}
-.v-sub{margin-top:4px;color:var(--muted);font-size:15px}
-.tag{justify-self:start;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);background:var(--warn-bg);padding:3px 9px;border-radius:999px}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);background:var(--fill);border-radius:var(--r)}
-.stat{padding:11px 14px;display:grid;gap:1px;min-width:0}
-.stat + .stat{border-left:1px solid var(--line)}
-.stat span{font-size:12px;color:var(--muted)}
-.stat b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25}
-@media (max-width:400px){ .v-top{gap:14px} .ring{width:96px;height:96px} .ring-c b{font-size:25px} .v-prod{font-size:19px} .stat{padding:10px} .stat b{font-size:15px} }
-.name-form{display:flex;gap:8px}
-details.disc{border-top:1px solid var(--line);padding-top:4px}
-details.disc summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;min-height:44px;font-size:16px;font-weight:500}
-details.disc summary::-webkit-details-marker{display:none}
-details.disc summary .ic{width:18px;height:18px;color:var(--faint);transition:transform .2s}
-details.disc[open] summary .ic{transform:rotate(90deg)}
-.dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:4px 0 8px}
-.dates label{display:grid;gap:5px;font-size:13px;color:var(--muted)}
-dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:4px 0 8px}
-dt{color:var(--muted);font-size:14px}
-dd{margin:0;font-family:var(--mono);font-size:14px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
-.raw{font-family:var(--mono);font-size:12px;color:var(--faint);overflow-wrap:anywhere;padding-bottom:8px}
-.v-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.saved{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--ok);font-weight:600;font-size:16px;min-height:50px}
-.saved .ic{stroke-width:2.4}
+/* Sections */
+section.sec{padding:96px 0}
+section.alt{background:var(--bg2)}
+.sec-head{max-width:720px;margin-bottom:48px}
+.sec-head.center{margin-left:auto;margin-right:auto;text-align:center}
+.kicker{font-size:14px;font-weight:600;color:var(--accent);margin-bottom:10px;letter-spacing:.02em}
+h2{font-size:clamp(32px,4.6vw,52px);line-height:1.08;letter-spacing:-.03em;font-weight:700}
+.sec-head p{font-size:clamp(17px,1.8vw,20px);color:var(--muted);margin-top:16px}
+.sec-head p.kicker,.kicker{font-size:14px;font-weight:600;color:var(--accent);margin:0 0 10px;letter-spacing:.02em}
+h3{font-size:20px;letter-spacing:-.015em;font-weight:600;line-height:1.25}
+.muted{color:var(--muted)}
+@media (max-width:640px){ section.sec{padding:68px 0} .sec-head{margin-bottom:32px} }
 
-/* History */
-.h-title{display:none;justify-content:space-between;align-items:baseline}
-.h-title h2{font-size:22px;font-weight:700;letter-spacing:-.015em}
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-.tile{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:12px 12px 10px;display:grid;gap:2px;min-width:0}
-.tile b{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
-.tile span{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
-.tile .dot{width:8px;height:8px}
-@media (max-width:370px){ .summary{grid-template-columns:repeat(2,1fr)} }
-.dot{width:10px;height:10px;border-radius:50%;flex:none;background:var(--none-ring)}
-.t-ok.dot{background:var(--ok-ring)} .t-warn.dot{background:var(--warn-ring)} .t-bad.dot{background:var(--bad-ring)}
-.day{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:14px 16px 7px}
-.day:first-child{padding-top:0}
-.item{position:relative;display:flex;align-items:center;gap:12px;padding:11px 6px 11px 16px;min-height:60px}
-.item.new{animation:rise .35s ease}
-.item + .item::before{content:"";position:absolute;top:0;left:38px;right:0;border-top:1px solid var(--line)}
-.item .main{flex:1;min-width:0;display:grid}
-.item .main b{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item .main span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pill{font-size:13px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums;background:var(--fill);color:var(--muted)}
-.t-ok.pill{background:var(--ok-bg);color:var(--ok)} .t-warn.pill{background:var(--warn-bg);color:var(--warn)} .t-bad.pill{background:var(--bad-bg);color:var(--bad)}
-.del{border:0;background:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--faint);cursor:pointer;flex:none}
-.del:hover{color:var(--bad);background:var(--bad-bg)}
-.del .ic{width:19px;height:19px}
-.h-empty{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:28px 20px;text-align:center;color:var(--muted);font-size:15px}
-.h-actions{display:flex;gap:8px;flex-wrap:wrap}
-.h-actions .btn{flex:1 1 auto}
-textarea{width:100%;font-family:var(--mono);font-size:12px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px}
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;counter-reset:s}
+.step{background:var(--surface);border-radius:24px;padding:28px;box-shadow:var(--shadow);display:grid;gap:10px;align-content:start}
+.step .n{width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;margin-bottom:6px}
+.step p{color:var(--muted);font-size:16px}
+@media (max-width:820px){ .steps{grid-template-columns:1fr} }
 
-/* Tab bar */
-.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:1fr 1fr;padding:4px max(16px,env(safe-area-inset-left)) calc(4px + env(safe-area-inset-bottom));
-  background:color-mix(in srgb,var(--surface) 80%,transparent);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-top:1px solid var(--line)}
-.tab{position:relative;border:0;background:none;font-size:11px;font-weight:600;color:var(--faint);display:grid;justify-items:center;gap:1px;padding:5px;min-height:50px;cursor:pointer;-webkit-tap-highlight-color:transparent}
-.tab .ic{width:26px;height:26px}
-.tab[aria-current="page"]{color:var(--accent)}
-.badge{position:absolute;top:2px;left:calc(50% + 7px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font-size:11px;line-height:18px;text-align:center}
+/* Features */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.feat{background:var(--surface);border-radius:24px;padding:28px;box-shadow:var(--shadow);display:grid;gap:10px;align-content:start}
+.feat .ico{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#fff;margin-bottom:6px}
+.feat .ico svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.feat p{color:var(--muted);font-size:16px}
+@media (max-width:900px){ .grid3{grid-template-columns:1fr 1fr} }
+@media (max-width:600px){ .grid3{grid-template-columns:1fr} }
 
-/* Toast */
-.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));z-index:30;transform:translate(-50%,16px);opacity:0;pointer-events:none;
-  display:flex;align-items:center;gap:12px;max-width:calc(100% - 32px);padding:8px 8px 8px 16px;border-radius:14px;background:var(--toast);color:#fff;font-size:15px;white-space:nowrap;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 10px 30px rgba(0,0,0,.2);transition:opacity .25s,transform .3s cubic-bezier(.2,.8,.2,1)}
-.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
-.toast button{border:0;background:none;color:#5ee6cd;font-weight:600;padding:6px 10px;min-height:36px;border-radius:9px;cursor:pointer}
+/* DataMatrix anatomy */
+.anat{background:var(--surface);border-radius:28px;padding:32px;box-shadow:var(--shadow);display:grid;grid-template-columns:auto 1fr;gap:36px;align-items:center}
+.dm{width:180px;height:180px;display:grid;grid-template-columns:repeat(18,1fr);grid-template-rows:repeat(18,1fr);border-left:6px solid var(--ink);border-bottom:6px solid var(--ink);padding:0}
+.dm i{background:var(--ink)}
+.hr{font-family:var(--mono);font-size:clamp(14px,2vw,18px);line-height:2.1;word-break:break-word}
+.seg{border-radius:7px;padding:3px 6px;margin-right:2px;white-space:nowrap}
+.seg b{font-weight:700}
+.s1{background:color-mix(in srgb,var(--c1) 16%,transparent);color:var(--c1)}
+.s2{background:color-mix(in srgb,var(--c2) 16%,transparent);color:var(--c2)}
+.s3{background:color-mix(in srgb,var(--c3) 16%,transparent);color:var(--c3)}
+.s4{background:color-mix(in srgb,var(--c4) 16%,transparent);color:var(--c4)}
+.s5{background:color-mix(in srgb,var(--c5) 16%,transparent);color:var(--c5)}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-top:22px}
+.legend div{display:grid;gap:2px;font-size:15px}
+.legend b{display:flex;align-items:center;gap:8px;font-size:15px}
+.legend i{width:10px;height:10px;border-radius:3px;flex:none}
+.legend span{color:var(--muted);font-size:14px}
+@media (max-width:760px){ .anat{grid-template-columns:1fr;padding:24px;gap:24px} .dm{width:140px;height:140px;margin:0 auto} }
 
-/* Settings sheet */
-dialog.sheet{border:0;padding:0;background:var(--bg);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:min(86vh,820px);border-radius:22px;overflow:auto;overscroll-behavior:contain}
-dialog.sheet::backdrop{background:rgba(0,0,0,.38)}
-dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
-@keyframes sheetIn{from{opacity:0;transform:translateY(24px)}}
-@media (max-width:599px){ dialog.sheet{margin:auto 0 0;width:100%;max-width:100%;border-radius:22px 22px 0 0;max-height:92vh;padding-bottom:env(safe-area-inset-bottom)} }
-.sheet-head{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:10px 12px;background:color-mix(in srgb,var(--bg) 85%,transparent);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
-.sheet-head h2{font-size:17px;font-weight:600;grid-column:2}
-.sheet-head .btn{grid-column:3;justify-self:end}
-.sheet-body{padding:8px 16px 28px;display:grid;gap:26px}
-.num{display:flex;align-items:center;gap:6px;color:var(--muted)}
-.num i{font-style:normal;width:22px}
-.num input{width:76px;text-align:right;background:var(--fill);font-variant-numeric:tabular-nums}
-.row .grow{flex:1;font-size:16px}
-.row .valtext{color:var(--muted)}
-.row .seg{flex:1;max-width:260px;margin-left:auto}
-.privacy{display:flex;gap:12px;padding:14px 16px;font-size:15px;color:var(--muted)}
-.privacy .ic{color:var(--accent);margin-top:1px}
-.btn-row{display:flex;gap:8px;padding:10px 16px 12px;flex-wrap:wrap}
-.btn-row .btn{flex:1 1 auto}
+.tablewrap{overflow-x:auto;margin-top:28px;border-radius:18px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+th,td{text-align:left;padding:14px 18px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+tr:last-child td{border-bottom:0}
+td code{font-family:var(--mono);font-weight:600}
 
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px}
+.card{background:var(--surface);border-radius:24px;padding:28px;box-shadow:var(--shadow);display:grid;gap:10px;align-content:start}
+.card p,.card li{color:var(--muted);font-size:16px}
+.card ul{margin:0;padding-left:20px;display:grid;gap:6px}
+@media (max-width:760px){ .cols2{grid-template-columns:1fr} }
+.note{display:flex;gap:12px;align-items:flex-start;background:var(--warn-bg);color:var(--ink);border-radius:18px;padding:18px 20px;margin-top:20px;font-size:15.5px}
+.note svg{flex:none;width:22px;height:22px;color:var(--warn);margin-top:1px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Try it */
+.try{margin-top:28px;background:var(--surface);border-radius:24px;padding:24px;box-shadow:var(--shadow);display:grid;gap:14px}
+.try form{display:flex;gap:10px;flex-wrap:wrap}
+.try input{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:16px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg2);color:var(--ink);min-height:48px}
+.out{display:grid;gap:8px}
+.out .row{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;font-size:15px}
+.out .row b{min-width:150px}
+.out .row code{font-family:var(--mono)}
+.out .err{color:var(--bad)}
+.examples{display:flex;flex-wrap:wrap;gap:8px;font-size:13px;color:var(--muted);align-items:center}
+.examples button{font:inherit;font-size:13px;border:1px solid var(--line);background:transparent;color:var(--accent);padding:5px 10px;border-radius:999px;cursor:pointer}
+
+/* Shelf-life explainer */
+.timeline{background:var(--surface);border-radius:28px;padding:32px;box-shadow:var(--shadow)}
+.tl-bar{position:relative;height:16px;border-radius:999px;background:linear-gradient(90deg,var(--ok-ring) 0 62%,var(--warn-ring) 62% 86%,var(--bad-ring) 86%);margin:44px 0 40px}
+.tl-mark{position:absolute;top:50%;transform:translate(-50%,-50%);width:4px;height:34px;border-radius:2px;background:var(--ink)}
+.tl-mark span{position:absolute;bottom:40px;left:50%;transform:translateX(-50%);font-size:13px;font-weight:600;white-space:nowrap}
+.tl-mark.l span{left:0;transform:none}
+.tl-mark.r span{left:auto;right:0;transform:none}
+.tl-labels{display:grid;grid-template-columns:62fr 24fr 14fr;font-size:13px;color:var(--muted);margin-top:-26px}
+.tl-labels div:nth-child(2),.tl-labels div:nth-child(3){text-align:center}
+.tl-labels div{padding:0 4px}
+.formula{font-family:var(--mono);font-size:clamp(14px,1.8vw,17px);background:var(--bg2);border-radius:14px;padding:16px 18px;margin-top:8px;overflow-x:auto;white-space:nowrap}
+.status3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
+.st{border-radius:18px;padding:18px;display:grid;gap:4px;font-size:15px}
+.st b{font-size:16px}
+.st.ok{background:var(--ok-bg)} .st.ok b{color:var(--ok)}
+.st.warn{background:var(--warn-bg)} .st.warn b{color:var(--warn)}
+.st.bad{background:var(--bad-bg)} .st.bad b{color:var(--bad)}
+@media (max-width:700px){ .formula{white-space:normal} .status3{grid-template-columns:1fr} .tl-labels{font-size:11px} .timeline{padding:22px} }
+
+/* Audience */
+.who{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.who div{background:var(--surface);border-radius:20px;padding:20px;box-shadow:var(--shadow);text-align:center;display:grid;gap:8px;justify-items:center;font-weight:600;font-size:15px}
+.who svg{width:30px;height:30px;color:var(--accent);fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:900px){ .who{grid-template-columns:repeat(3,1fr)} }
+@media (max-width:520px){ .who{grid-template-columns:1fr 1fr} }
+
+/* Privacy band */
+.band{background:linear-gradient(135deg,#0a6f60,#13a088);color:#fff;border-radius:32px;padding:56px 48px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.band h2{color:#fff}
+.band p{color:rgba(255,255,255,.85);font-size:18px;margin-top:14px}
+.band ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.band li{display:flex;gap:12px;align-items:flex-start;font-size:16.5px}
+.band li svg{width:22px;height:22px;flex:none;margin-top:1px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:820px){ .band{grid-template-columns:1fr;padding:36px 26px;border-radius:26px} }
+
+/* FAQ */
+.faq-groups{display:grid;gap:36px}
+.faq-group h3{font-size:15px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 10px 4px}
+.faq{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.faq details{border-bottom:1px solid var(--line)}
+.faq details:last-child{border-bottom:0}
+.faq summary{list-style:none;cursor:pointer;padding:20px 56px 20px 22px;font-weight:600;font-size:17px;position:relative}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";position:absolute;right:24px;top:50%;width:10px;height:10px;border-right:2px solid var(--faint);border-bottom:2px solid var(--faint);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+.faq .a{padding:0 22px 22px;color:var(--muted);font-size:16px;display:grid;gap:10px}
+.faq .a ul{margin:0;padding-left:20px;display:grid;gap:4px}
+
+/* Legal */
+.legal{display:grid;gap:20px}
+.legal .card h2{font-size:clamp(26px,3.4vw,34px)}
+.legal .card h3{font-size:17px;margin-top:10px;color:var(--ink)}
+.legal .card p,.legal .card li{font-size:15.5px}
+.updated{font-size:13px;color:var(--faint)}
+
+/* Final CTA + footer */
+.final{text-align:center;padding:100px 0}
+.final .cta{justify-content:center}
+footer{background:var(--bg2);border-top:1px solid var(--line);padding:40px 0 calc(40px + env(safe-area-inset-bottom));font-size:13px;color:var(--muted)}
+footer .wrap{display:grid;gap:18px}
+footer .links{display:flex;flex-wrap:wrap;gap:8px 22px}
+footer a{color:var(--muted)}
+.sources{columns:2;column-gap:32px;font-size:13px;padding-left:18px;margin:0}
+.sources li{margin-bottom:6px;break-inside:avoid}
+@media (max-width:700px){ .sources{columns:1} }
+
+/* Reveal on scroll */
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} .reveal{opacity:1;transform:none;transition:none} *{transition:none!important;animation:none!important} .m-ring .v{stroke-dashoffset:72} }
 </style>
 
-<header class="top">
-  <div>
-    <p class="eyebrow"><img src="icons/icon.svg" alt="">Lumetis Pharma</p>
-    <h1>Shelf Life Scanner</h1>
+<a class="skip" href="#main">Skip to content</a>
+
+<nav class="top" aria-label="Main">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icons/icon.svg" alt="">Shelf Life Scanner</a>
+    <div class="navlinks">
+      <a href="#how">How it works</a>
+      <a href="#datamatrix">GS1 DataMatrix</a>
+      <a href="#shelf-life">Shelf life</a>
+      <a href="#faq">FAQ</a>
+      <a href="#privacy">Privacy</a>
+    </div>
+    <a class="btn primary sm" href="app/">Open scanner</a>
   </div>
-  <button class="icon-btn" id="openSettings" type="button" aria-label="Settings" data-ic="sliders"></button>
-</header>
-
-<main class="layout">
-  <section class="view" id="viewCheck" aria-label="Check a pack">
-    <div class="seg" role="group" aria-label="How to check">
-      <button type="button" id="modeScan" aria-pressed="true" data-ic="scan">Scan</button>
-      <button type="button" id="modeManual" aria-pressed="false" data-ic="keyboard">Type</button>
-    </div>
-
-    <div class="vf" id="vf">
-      <div id="reader"></div>
-      <button class="vf-idle" id="vfIdle" type="button" aria-label="Start camera to scan">
-        <svg class="brackets" viewBox="0 0 200 130" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" aria-hidden="true">
-          <path d="M4 34V14A10 10 0 0 1 14 4h20M166 4h20a10 10 0 0 1 10 10v20M196 96v20a10 10 0 0 1-10 10h-20M34 126H14A10 10 0 0 1 4 116V96"/>
-          <path class="beam" d="M30 65h140"/>
-        </svg>
-        <b>Tap to scan</b>
-        <span>DataMatrix · GS1-128 · EAN/UPC · QR</span>
-      </button>
-      <button class="vf-close" id="vfClose" type="button" aria-label="Stop camera" data-ic="close"></button>
-    </div>
-
-    <div class="actions" id="scanActions">
-      <button class="btn primary" id="camBtn" type="button" data-ic="camera"><span>Start camera</span></button>
-      <label class="btn" data-ic="photo">Photo<input id="photo" type="file" accept="image/*"></label>
-    </div>
-
-    <p class="note" id="camMsg" role="status">Hold the code 10–15 cm from the camera.</p>
-
-    <details class="paste" id="pasteBox">
-      <summary>Paste or type a code instead</summary>
-      <form class="inline" id="manualForm">
-        <input id="manualInput" placeholder="(01)…(17)271130(10)AB12" aria-label="Code text" autocomplete="off" spellcheck="false">
-        <button class="btn primary small" type="submit">Read</button>
-      </form>
-    </details>
-
-    <form class="entry" id="entryForm" hidden novalidate>
-      <div>
-        <ul class="group">
-          <li class="row"><label class="k" for="enGtin">Barcode</label>
-            <span class="val"><input id="enGtin" inputmode="numeric" autocomplete="off" placeholder="Optional"></span>
-            <button class="mini" type="button" id="enScan" aria-label="Scan barcode with camera" data-ic="camera"></button>
-            <label class="mini" aria-label="Read barcode from a photo" data-ic="photo"><input id="enPhoto" type="file" accept="image/*" aria-label="Read barcode from a photo"></label>
-          </li>
-          <li class="row"><label class="k" for="enName">Product</label><span class="val"><input id="enName" autocomplete="off" placeholder="Optional"></span></li>
-          <li class="row"><label class="k" for="enBatch">Batch</label><span class="val"><input id="enBatch" autocomplete="off" placeholder="Optional"></span></li>
-        </ul>
-      </div>
-      <div>
-        <ul class="group">
-          <li class="row"><span class="k" id="enExpLbl">Expiry <span class="req" aria-hidden="true">*</span></span>
-            <span class="val"><span class="dmy" id="enExp" role="group" aria-labelledby="enExpLbl" aria-describedby="enExpHint">
-              <input id="enExpD" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="DD" aria-label="Expiry day (optional)">
-              <span class="sep" aria-hidden="true">/</span>
-              <input id="enExpM" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="MM" aria-label="Expiry month">
-              <span class="sep" aria-hidden="true">/</span>
-              <input id="enExpY" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="YYYY" aria-label="Expiry year">
-            </span><span class="hint" id="enExpHint" aria-live="polite"></span></span>
-            <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enExpPick" aria-label="Pick expiry date from calendar" tabindex="-1"></span>
-          </li>
-          <li class="row"><span class="k" id="enMfgLbl">Made</span>
-            <span class="val"><span class="dmy" id="enMfg" role="group" aria-labelledby="enMfgLbl" aria-describedby="enMfgHint">
-              <input id="enMfgD" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="DD" aria-label="Manufacture day (optional)">
-              <span class="sep" aria-hidden="true">/</span>
-              <input id="enMfgM" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="MM" aria-label="Manufacture month">
-              <span class="sep" aria-hidden="true">/</span>
-              <input id="enMfgY" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="YYYY" aria-label="Manufacture year">
-            </span><span class="hint" id="enMfgHint" aria-live="polite"></span></span>
-            <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enMfgPick" aria-label="Pick manufacture date from calendar" tabindex="-1"></span>
-          </li>
-        </ul>
-        <p class="group-foot">Leave the day empty for month-only dates (e.g. EXP 11/2027); they count as the last day of the month. Add the manufacture date to see % shelf life left.</p>
-      </div>
-      <div class="actions">
-        <button class="btn primary" type="submit">Check</button>
-        <button class="btn" type="button" id="enClear">Clear</button>
-      </div>
-    </form>
-
-    <section class="card" id="result" aria-live="polite" aria-label="Result"></section>
-
-    <p class="foot-note" data-ic="lock">Everything stays on this device · Lumetis Pharma</p>
-  </section>
-
-  <section class="view" id="viewHistory" aria-labelledby="hTitle">
-    <div class="h-title"><h2 id="hTitle">History</h2><span class="note"><span id="logCount">0</span> saved</span></div>
-    <div>
-      <p class="group-title">Today</p>
-      <div class="summary">
-        <div class="tile"><b id="sumAll">0</b><span>Checked</span></div>
-        <div class="tile"><b id="sumOk">0</b><span><i class="dot t-ok"></i>Accept</span></div>
-        <div class="tile"><b id="sumWarn">0</b><span><i class="dot t-warn"></i>Near</span></div>
-        <div class="tile"><b id="sumBad">0</b><span><i class="dot t-bad"></i>Reject</span></div>
-      </div>
-    </div>
-    <div class="seg" role="group" aria-label="Filter history" id="filterSeg">
-      <button type="button" data-f="all" aria-pressed="true">All</button>
-      <button type="button" data-f="flag" aria-pressed="false">Needs attention</button>
-    </div>
-    <div id="logList"></div>
-    <div class="h-actions" id="hActions">
-      <button class="btn small" type="button" id="dlBtn" data-ic="download">Export CSV</button>
-      <button class="btn small" type="button" id="copyBtn" data-ic="copy"><span>Copy</span></button>
-      <button class="btn small danger" type="button" id="clearBtn" data-ic="trash">Clear all</button>
-    </div>
-    <textarea id="csvBox" rows="5" hidden readonly aria-label="CSV text"></textarea>
-  </section>
-</main>
-
-<nav class="tabbar" aria-label="Sections">
-  <button class="tab" type="button" data-view="check" aria-current="page" data-ic="scan">Check</button>
-  <button class="tab" type="button" data-view="history" data-ic="clock">History<span class="badge" id="tabBadge" hidden>0</span></button>
 </nav>
 
-<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndo">Undo</button></div>
+<main id="main">
+<!-- HERO -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow">By Lumetis Pharma</p>
+      <h1>Know what’s <span>good to go.</span></h1>
+      <p class="lead">Scan the 2D code on a medicine pack and see, in a second, how much shelf life is left, and whether it meets your receiving rules.</p>
+      <div class="cta">
+        <a class="btn primary" href="app/">Open the scanner</a>
+        <a class="btn ghost" href="#how">See how it works</a>
+      </div>
+      <div class="chips">
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Free to use</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Nothing to install</span>
+        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Your data stays on your device</span>
+      </div>
+    </div>
 
-<dialog class="sheet" id="settings" aria-labelledby="setTitle">
-  <form method="dialog" class="sheet-head"><h2 id="setTitle">Settings</h2><button class="btn plain" type="submit" style="font-weight:600">Done</button></form>
-  <div class="sheet-body">
-    <div>
-      <p class="group-title">Receiving rules</p>
-      <div class="group">
-        <label class="row" for="minPct"><span class="grow">Minimum shelf life left</span><span class="num"><input id="minPct" type="number" inputmode="numeric" min="0" max="100" value="60"><i>%</i></span></label>
-        <label class="row" for="nearMonths"><span class="grow">Warn when expiring within</span><span class="num"><input id="nearMonths" type="number" inputmode="numeric" min="0" max="60" value="6"><i>mo</i></span></label>
-      </div>
-      <p class="group-foot">Match these to your organisation’s receiving SOP. The minimum % is checked only when a manufacture date is known.</p>
-    </div>
-    <div>
-      <p class="group-title">Products</p>
-      <div class="group">
-        <div class="row"><span class="grow">Product names</span><span class="valtext" id="prodCount">0</span></div>
-        <div class="btn-row">
-          <label class="btn small tinted">Import CSV<input id="prodFile" type="file" accept=".csv,text/csv,text/plain"></label>
-          <button class="btn small tinted" type="button" id="prodCopy">Copy list</button>
+    <div class="phone reveal" aria-hidden="true">
+      <div class="screen">
+        <div class="m-head"><div><small>Lumetis Pharma</small><b>Shelf Life Scanner</b></div></div>
+        <div class="m-seg"><span>Scan</span><span>Type</span></div>
+        <div class="m-vf"><span class="m-dm"></span>
+          <svg viewBox="0 0 200 130" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"><path d="M4 34V14A10 10 0 0 1 14 4h20M166 4h20a10 10 0 0 1 10 10v20M196 96v20a10 10 0 0 1-10 10h-20M34 126H14A10 10 0 0 1 4 116V96"/></svg>
         </div>
-      </div>
-      <p class="group-foot" id="prodMsg">Import a CSV with a GTIN (or Barcode) column and a Description (or Product name) column. Names you type for unknown packs are remembered here.</p>
-      <textarea id="prodBox" rows="4" hidden readonly aria-label="Product list CSV" style="margin-top:8px"></textarea>
-    </div>
-    <div>
-      <p class="group-title">Appearance</p>
-      <div class="group">
-        <div class="row"><span class="grow">Theme</span>
-          <div class="seg" role="group" aria-label="Theme" id="themeSeg">
-            <button type="button" data-t="auto" aria-pressed="true">Auto</button>
-            <button type="button" data-t="light" aria-pressed="false">Light</button>
-            <button type="button" data-t="dark" aria-pressed="false">Dark</button>
+        <div class="m-card">
+          <div class="m-top">
+            <div class="m-ring"><svg viewBox="0 0 100 100"><circle class="t" cx="50" cy="50" r="44"/><circle class="v" cx="50" cy="50" r="44"/></svg><div><b>820</b><span>days left</span></div></div>
+            <div><span class="m-pill">✓ Acceptable</span><div class="m-prod">Example product 500 mg</div><div class="m-sub">Meets your receiving rules.</div></div>
           </div>
+          <div class="m-stats"><div>Expires<b>31 Jan 2029</b></div><div>Months<b>26.9</b></div><div>Life left<b>74%</b></div></div>
+          <div class="m-btns"><span>Saved</span><span>Next pack</span></div>
         </div>
       </div>
-    </div>
-    <div>
-      <p class="group-title">Privacy</p>
-      <div class="group"><p class="privacy" data-ic="lock">Your history, product names and settings are saved only in this browser on this device. Nothing is uploaded. The camera is used only while you scan, and turns off when you leave the Check tab.</p></div>
-      <p class="group-foot">Dates are read per GS1 General Specifications (YYMMDD; day 00 = last day of the month).</p>
-    </div>
-    <div>
-      <p class="group-title">About</p>
-      <div class="group">
-        <div class="row" style="gap:14px;padding-block:12px"><img src="icons/icon.svg" alt="" width="44" height="44" style="border-radius:11px;flex:none">
-          <span class="grow"><b style="font-weight:600">Shelf Life Scanner</b><br><span class="valtext" style="font-size:14px">by Lumetis Pharma</span></span></div>
-      </div>
-      <p class="group-foot">Tip: add this page to your home screen (Share → Add to Home Screen on iPhone, or ⋮ → Add to Home screen on Android) to open it like an app.</p>
     </div>
   </div>
-</dialog>
+</header>
 
-<script id="core">
-/* ---------- GS1 parsing ---------- */
-const GS = "\u001d";
-const AI = {
-  "00":{n:"SSCC",f:18},"01":{n:"GTIN",f:14},"02":{n:"Content GTIN",f:14},
-  "10":{n:"Batch/Lot",v:20},"11":{n:"Manufacture date",f:6,d:1},"12":{n:"Due date",f:6,d:1},
-  "13":{n:"Packaging date",f:6,d:1},"15":{n:"Best before",f:6,d:1},"16":{n:"Sell by",f:6,d:1},
-  "17":{n:"Expiry date",f:6,d:1},"20":{n:"Variant",f:2},"21":{n:"Serial",v:20},"22":{n:"CPV",v:20},
-  "240":{n:"Additional ID",v:30},"241":{n:"Customer part no.",v:30},"30":{n:"Count",v:8},"37":{n:"Count of units",v:8},
-  "710":{n:"NHRN (DE)",v:20},"711":{n:"NHRN (FR)",v:20},"712":{n:"NHRN (ES)",v:20},"713":{n:"NHRN (BR)",v:20},"714":{n:"NHRN (PT)",v:20},"715":{n:"NHRN (US FDA)",v:20},
-  "90":{n:"Internal",v:30},"91":{n:"Internal",v:90},"92":{n:"Internal",v:90},"93":{n:"Internal",v:90},"94":{n:"Internal",v:90},
-  "95":{n:"Internal",v:90},"96":{n:"Internal",v:90},"97":{n:"Internal",v:90},"98":{n:"Internal",v:90},"99":{n:"Internal",v:90}
-};
-function findAI(s){ for (const l of [2,3,4]) if (AI[s.slice(0,l)]) return s.slice(0,l); return null; }
-
-function cleanRaw(raw){
-  let s = String(raw).replace(/\r|\n/g,"");
-  s = s.replace(/<GS>|\{GS\}|\\x1d|\\u001d|~1/gi, GS);  // text stand-ins for FNC1
-  s = s.replace(/^\][A-Za-z][0-9]/, "");                // symbology id ]d2 ]C1 ]Q3 ]e0
-  return s.replace(new RegExp("^"+GS+"+"),"");
-}
-
-function parseGS1(raw){
-  const s0 = cleanRaw(raw).trim();
-  const out = {};
-  if (/^\(\d{2,4}\)/.test(s0)) {                       // human-readable (01)...(17)...
-    const re = /\((\d{2,4})\)([^(]*)/g; let m;
-    while ((m = re.exec(s0))) out[m[1]] = m[2].replace(new RegExp(GS,"g"),"").trim();
-    return Object.keys(out).length ? out : null;
-  }
-  let s = s0.replace(/\s+/g,"");
-  while (s.length){
-    s = s.replace(new RegExp("^"+GS+"+"),"");
-    if (!s) break;
-    const k = findAI(s); if (!k) return Object.keys(out).length ? out : null;
-    const spec = AI[k]; s = s.slice(k.length);
-    if (spec.f){ const val = s.slice(0,spec.f); if (val.length<spec.f) return null; out[k]=val; s=s.slice(spec.f); }
-    else { let end = s.indexOf(GS); if (end<0) end = s.length; end = Math.min(end, spec.v); out[k]=s.slice(0,end); s=s.slice(end); }
-  }
-  return Object.keys(out).length ? out : null;
-}
-
-function gtinCheckOk(g){
-  if (!/^\d{8,14}$/.test(g)) return false;
-  const d = g.split("").map(Number), c = d.pop(); let sum=0;
-  d.reverse().forEach((x,i)=> sum += x*(i%2===0?3:1));
-  return (10 - sum%10)%10 === c;
-}
-
-/* YYMMDD -> Date. Century per GS1 GenSpecs sliding window; DD "00" = last day of month. */
-function gs1Date(yymmdd, now = new Date()){
-  if (!/^\d{6}$/.test(yymmdd)) return null;
-  const yy=+yymmdd.slice(0,2), mm=+yymmdd.slice(2,4), dd=+yymmdd.slice(4,6);
-  if (mm<1||mm>12) return null;
-  const cy = now.getFullYear(), cent = Math.floor(cy/100)*100, diff = yy - cy%100;
-  let year = cent + yy; if (diff>=51) year -= 100; else if (diff<=-50) year += 100;
-  const day = dd===0 ? new Date(year, mm, 0).getDate() : dd;
-  return new Date(year, mm-1, day);
-}
-
-function classify(raw, format){
-  const fmt = (format||"").toUpperCase();
-  const digits = String(raw).replace(/\D/g,"");
-  if (/EAN|UPC/.test(fmt) || (!fmt && /^\d{8}$|^\d{12,13}$/.test(String(raw).trim()))){
-    return {kind:"Retail barcode (GTIN only)", ais:{"01":digits.padStart(14,"0")}};
-  }
-  const ais = parseGS1(raw);
-  const looksGS1 = ais && (ais["01"]||ais["00"]||ais["17"]) &&
-    (!ais["01"] || /^\d{14}$/.test(ais["01"]));
-  if (looksGS1) return {kind: /DATA_MATRIX/.test(fmt)?"GS1 DataMatrix": /CODE_128/.test(fmt)?"GS1-128": /QR/.test(fmt)?"GS1 QR":"GS1 data", ais};
-  return {kind:"Non-GS1 code", ais:{}, text:String(raw)};
-}
-
-function evaluate(exp, mfg, rules, now = new Date()){
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (!exp) return {status:"none", label:"Enter expiry date"};
-  const days = Math.round((exp - today)/864e5);
-  const months = days/30.4375;
-  let pct = null;
-  if (mfg && exp>mfg) pct = Math.max(0, Math.min(100, (exp - today)/(exp - mfg)*100));
-  let status="ok", label="Acceptable";
-  if (days<0){status="bad";label="Expired";}
-  else if (pct!==null && pct<rules.minPct){status="bad";label="Below min. shelf life";}
-  else if (months<rules.nearMonths){status="warn";label="Near expiry";}
-  return {days, months, pct, status, label};
-}
-</script>
-<script>
-/* ---------- Helpers ---------- */
-const $ = id => document.getElementById(id);
-const fmtD = d => d ? d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"}) : "—";
-const isoD = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : "";
-const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const store = { get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}} };
-const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const isNarrow = () => matchMedia("(max-width:899px)").matches;
-
-const ICONS = {
-  scan:'<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/>',
-  camera:'<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
-  photo:'<rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/>',
-  keyboard:'<rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/>',
-  clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
-  sliders:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
-  check:'<path d="m5 12.5 4.5 4.5L19 7.5"/>',
-  alert:'<path d="M12 4.5 3 19.5h18z"/><path d="M12 10v4M12 17h.01"/>',
-  x:'<circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6M15 9l-6 6"/>',
-  calendar:'<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
-  trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>',
-  chevron:'<path d="m9 6 6 6-6 6"/>',
-  lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
-  close:'<path d="M7 7l10 10M17 7 7 17"/>',
-  download:'<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
-  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
-  box:'<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>'
-};
-const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]||""}</svg>`;
-document.querySelectorAll("[data-ic]").forEach(el=>el.insertAdjacentHTML("afterbegin", ic(el.dataset.ic)));
-
-
-/* ---------- Appearance ---------- */
-function applyTheme(t){
-  if (t==="light"||t==="dark") document.documentElement.dataset.theme=t; else delete document.documentElement.dataset.theme;
-  document.querySelectorAll("#themeSeg button").forEach(b=>b.setAttribute("aria-pressed", String(b.dataset.t===t)));
-}
-applyTheme(store.get("sls_theme","auto"));
-$("themeSeg").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return; store.set("sls_theme",b.dataset.t); applyTheme(b.dataset.t); });
-
-/* ---------- State ---------- */
-let log = store.get("sls_log", []);
-log.forEach((r,i)=>{ if(!r.id) r.id = "r"+(Date.parse(r.t)||0)+"-"+i; });
-const newId = () => "r"+Date.now()+"-"+Math.random().toString(36).slice(2,7);
-const saveLog = () => store.set("sls_log", log);
-let current = null;
-const rules = () => ({minPct:+$("minPct").value||0, nearMonths:+$("nearMonths").value||0});
-const savedRules = store.get("sls_rules", null);
-if (savedRules){ $("minPct").value=savedRules.minPct; $("nearMonths").value=savedRules.nearMonths; }
-["minPct","nearMonths"].forEach(id=>$(id).addEventListener("input",()=>{store.set("sls_rules",rules()); render();}));
-
-/* ---------- Toast with undo ---------- */
-let toastTimer;
-function toast(msg, undo){
-  $("toastMsg").textContent = msg;
-  const b = $("toastUndo"); b.hidden = !undo; b.onclick = () => { hideToast(); undo(); };
-  $("toast").classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, undo ? 6000 : 2600);
-}
-function hideToast(){ $("toast").classList.remove("show"); }
-function buzz(status){ if (!navigator.vibrate) return; try{ navigator.vibrate(status==="ok"?40 : status==="warn"?[40,70,40] : [90,60,90]); }catch{} }
-
-/* ---------- Product list: shared products.csv in the repo + this device's own entries ---------- */
-const normG = g => { const d=String(g||"").replace(/\D/g,""); return d.length>=8 && d.length<=14 ? d.padStart(14,"0") : ""; };
-let baseProducts = {}, localProducts = store.get("sls_products", {});
-const product = g => { const k=normG(g); return k ? (localProducts[k] || baseProducts[k] || null) : null; };
-function parseCSV(text){
-  const rows=[]; let row=[], f="", q=false;
-  const d = (text.split("\n")[0].split(";").length > text.split("\n")[0].split(",").length) ? ";" : ",";
-  for (let i=0;i<text.length;i++){
-    const c=text[i];
-    if (q){ if (c==='"'){ if (text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
-    else if (c==='"') q=true;
-    else if (c===d){ row.push(f); f=""; }
-    else if (c==="\n"){ row.push(f); rows.push(row); row=[]; f=""; }
-    else if (c!=="\r") f+=c;
-  }
-  if (f||row.length){ row.push(f); rows.push(row); }
-  return rows.filter(r=>r.some(x=>x.trim()));
-}
-function productsFromCSV(text){
-  const rows=parseCSV(text.replace(/^﻿/,"")); if (!rows.length) return {};
-  const head=rows[0].map(x=>x.trim().toLowerCase());
-  let gi=head.findIndex(x=>/gtin|barcode|ean|upc/.test(x));
-  let di=head.findIndex(x=>/desc/.test(x)); if (di<0) di=head.findIndex(x=>/name|product/.test(x));
-  const pi=head.findIndex(x=>/pack|uom|unit/.test(x)), ci=head.findIndex(x=>/item.?code|sku|^code$/.test(x));
-  let start=1; if (gi<0 || di<0){ gi=0; di=1; start = normG(rows[0][0]) ? 0 : 1; }
-  const out={};
-  for (const r of rows.slice(start)){
-    const k=normG(r[gi]); const name=(r[di]||"").trim(); if (!k||!name) continue;
-    out[k]={d:name, p:pi>=0?(r[pi]||"").trim():"", c:ci>=0?(r[ci]||"").trim():""};
-  }
-  return out;
-}
-function prodCount(){ const n=Object.keys({...baseProducts,...localProducts}).length; $("prodCount").textContent = n+(n===1?" item":" items"); }
-fetch("products.csv",{cache:"no-store"}).then(r=>r.ok?r.text():"").then(t=>{
-  if (!t) return; baseProducts=productsFromCSV(t); prodCount(); render(); renderLog();
-}).catch(()=>{});
-$("prodFile").addEventListener("change", async e=>{
-  const f=e.target.files?.[0]; if(!f) return;
-  try{ const add=productsFromCSV(await f.text()); const n=Object.keys(add).length;
-    if (!n) throw 0;
-    localProducts={...localProducts,...add}; store.set("sls_products",localProducts); prodCount(); render(); renderLog();
-    $("prodMsg").textContent=`Imported ${n} products from ${f.name}.`; $("prodMsg").style.color="var(--ok)";
-  }catch{ $("prodMsg").textContent="No products found. The file needs a GTIN (or Barcode) column and a Description (or Product name) column."; $("prodMsg").style.color="var(--bad)"; }
-  finally{ e.target.value=""; }
-});
-$("prodCopy").onclick=()=>{
-  const all={...baseProducts,...localProducts}, q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
-  const t=["GTIN,Description,Pack,Item code",...Object.entries(all).map(([g,v])=>[g,v.d,v.p,v.c].map(q).join(","))].join("\n");
-  $("prodBox").value=t; $("prodBox").hidden=false;
-  navigator.clipboard?.writeText(t).then(()=>toast("Product list copied")).catch(()=>$("prodBox").select());
-};
-prodCount();
-
-/* ---------- Checking a pack ---------- */
-const EXAMPLE = "]d2" + "0109501101530003" + "11260115" + "17290131" + "10LT2408A" + "\u001d" + "21SN0042977";
-function handle(raw, format, example=false){
-  const c = classify(raw, format);
-  const exp = c.ais["17"] ? gs1Date(c.ais["17"]) : null;
-  const mfg = c.ais["11"] ? gs1Date(c.ais["11"]) : null;
-  current = {raw, format, kind:c.kind, ais:c.ais, text:c.text, exp, mfg, example, logged:false, fresh:true};
-  if (!example) buzz(evaluate(exp, mfg, rules()).status);
-  render();
-  if (exp && !example) addToLog();
-  revealResult();
-}
-function revealResult(){ if (isNarrow()) $("result").scrollIntoView({behavior:reduceMotion?"auto":"smooth", block:"nearest"}); }
-
-function entryFromCurrent(ev){
-  return {mfg:isoD(current.mfg), exp:isoD(current.exp), days:ev.days??"", pct: ev.pct==null?"":ev.pct.toFixed(0), status:ev.label};
-}
-function addToLog(){
-  if (!current || current.logged) return;
-  const ev = evaluate(current.exp, current.mfg, rules()), id = newId();
-  log.unshift({id, t:new Date().toISOString(), desc:product(current.ais["01"])?.d || current.name || "", kind:current.kind,
-    gtin:current.ais["01"]||"", batch:current.ais["10"]||"", serial:current.ais["21"]||"", ...entryFromCurrent(ev),
-    raw:current.raw.replace(/\u001d/g,"<GS>")});
-  current.logged = true; current.logId = id; freshId = id; saveLog(); renderLog(); render();
-  toast("Saved to History", ()=>{
-    log = log.filter(r=>r.id!==id); saveLog();
-    if (current?.logId===id) current.logged=false;
-    renderLog(); render();
-  });
-}
-function datesChanged(){
-  if (current.logged){
-    const r = log.find(x=>x.id===current.logId);
-    if (r){ Object.assign(r, entryFromCurrent(evaluate(current.exp, current.mfg, rules()))); saveLog(); renderLog(); }
-  }
-  render();
-}
-
-const RING_C = 2*Math.PI*44;
-function render(){
-  const el = $("result");
-  if (!current){
-    el.innerHTML = `<div class="empty">
-      <div class="empty-ic">${ic("box")}</div>
-      <h2>Ready when you are</h2>
-      <p>Scan a pack or type its dates to see how much shelf life is left.</p>
-      <button class="btn plain" type="button" id="exBtn">See an example</button></div>`;
-    $("exBtn").onclick = () => handle(EXAMPLE, "DATA_MATRIX", true);
-    return;
-  }
-  const a = current.ais, r = rules(), ev = evaluate(current.exp, current.mfg, r);
-  const gt = a["01"], prod = product(gt);
-  const name = prod?.d || current.name || (gt ? "Unknown product" : current.kind==="Non-GS1 code" ? "Not a GS1 code" : "Pack");
-  const icon = {ok:"check", warn:"alert", bad:"x", none:"calendar"}[ev.status];
-  let sub;
-  if (ev.status==="none") sub = current.kind==="Non-GS1 code" ? "This code has no product or date data. Add the expiry date below." : "No expiry in this code. Add it from the pack label below.";
-  else if (ev.days<0) sub = `Expired ${fmtD(current.exp)}. Do not accept.`;
-  else if (ev.status==="bad") sub = `${ev.pct.toFixed(0)}% shelf life left, below your ${r.minPct}% minimum.`;
-  else if (ev.status==="warn") sub = `Expires ${fmtD(current.exp)}, inside your ${r.nearMonths}-month window.`;
-  else sub = `Expires ${fmtD(current.exp)}. Meets your receiving rules.`;
-  const frac = ev.days==null ? 0 : ev.pct!=null ? ev.pct/100 : ev.days<0 ? 0 : Math.min(1, ev.months/Math.max(12, r.nearMonths*2));
-  const off = RING_C*(1-frac), start = current.fresh && !reduceMotion ? RING_C : off;
-  const centre = ev.days==null ? `<b>—</b><span>no date</span>` : `<b>${Math.abs(ev.days)}</b><span>${ev.days<0?"days ago":ev.days===1?"day left":"days left"}</span>`;
-  const rows = [
-    ["Type", current.kind],
-    gt && ["GTIN", gt + (gtinCheckOk(gt)?"":"  ⚠ check digit fails")],
-    prod?.p && ["Pack", prod.p], prod?.c && ["Item code", prod.c],
-    a["10"] && ["Batch", a["10"]], a["21"] && ["Serial", a["21"]],
-    ["Expiry", fmtD(current.exp)], ["Manufactured", fmtD(current.mfg)],
-    ...Object.keys(a).filter(k=>!["01","10","21","17","11"].includes(k)).map(k=>[`(${k}) ${AI[k]?.n||""}`, a[k]]),
-    current.text && current.kind!=="Manual entry" && ["Content", current.text]
-  ].filter(Boolean);
-  const isManual = current.kind==="Manual entry";
-  el.innerHTML = `<div class="verdict v-${ev.status}">
-    ${current.example?'<span class="tag">Example</span>':""}
-    <div class="v-top">
-      <div class="ring" role="img" aria-label="${ev.days==null?"No expiry date":Math.abs(ev.days)+(ev.days<0?" days since expiry":" days left")}">
-        <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="44"/><circle class="val" id="ringVal" cx="50" cy="50" r="44" style="stroke-dasharray:${RING_C};stroke-dashoffset:${start}"/></svg>
-        <div class="ring-c">${centre}</div>
-      </div>
-      <div class="v-text">
-        <p class="v-label">${ic(icon)}${esc(ev.label)}</p>
-        <h2 class="v-prod">${esc(name)}</h2>
-        <p class="v-sub">${esc(sub)}</p>
-      </div>
+<!-- HOW IT WORKS -->
+<section class="sec alt" id="how">
+  <div class="wrap">
+    <div class="sec-head center reveal">
+      <p class="kicker">How it works</p>
+      <h2>Three seconds per pack.</h2>
+      <p>No logins, no setup. Open it on any phone and start checking deliveries.</p>
     </div>
-    ${ev.days!=null?`<div class="stats">
-      <div class="stat"><span>Expires</span><b>${esc(fmtD(current.exp))}</b></div>
-      <div class="stat"><span>Months left</span><b>${Math.max(0,ev.months).toFixed(1)}</b></div>
-      <div class="stat" ${ev.pct==null?'title="Add the manufacture date to see this"':""}><span>Shelf life left</span><b>${ev.pct==null?"—":ev.pct.toFixed(0)+"%"}</b></div>
-    </div>`:""}
-    ${gt && !prod ? `<form class="name-form" id="nameForm"><input id="nameIn" placeholder="Name this product" aria-label="Product name" autocomplete="off"><button class="btn small tinted" type="submit">Save</button></form>` : ""}
-    <div>
-      <details class="disc" ${current.exp?"":"open"}><summary>${current.exp?"Edit dates":"Add dates"}${ic("chevron")}</summary>
-        <div class="dates">
-          <label for="expIn">Expiry${a["17"]?" (from code)":""}<input id="expIn" type="date" value="${isoD(current.exp)}"></label>
-          <label for="mfgIn">Manufactured${a["11"]?" (from code)":""}<input id="mfgIn" type="date" value="${isoD(current.mfg)}"></label>
+    <div class="steps">
+      <div class="step reveal"><span class="n">1</span><h3>Scan or type</h3><p>Point your camera at the GS1 DataMatrix, choose a photo, use a USB or Bluetooth barcode scanner, or type the dates from the label.</p></div>
+      <div class="step reveal"><span class="n">2</span><h3>Get a clear verdict</h3><p>See the days left, months left and % shelf life remaining, with a plain answer: <b>Acceptable</b>, <b>Near expiry</b>, <b>Below minimum</b> or <b>Expired</b>.</p></div>
+      <div class="step reveal"><span class="n">3</span><h3>Save and export</h3><p>Every check is saved to History with batch and time, so you can export a CSV for your receiving records in one tap.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="sec" id="features">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Features</p>
+      <h2>Everything you need at the receiving bay. Nothing you don’t.</h2>
+    </div>
+    <div class="grid3">
+      <div class="feat reveal"><span class="ico" style="background:#0a7d6c"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5"/></svg></span><h3>Instant shelf-life ring</h3><p>The remaining life is shown as a ring that fills in green, amber or red, so you can read it at arm’s length.</p></div>
+      <div class="feat reveal"><span class="ico" style="background:#c2410c"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></span><h3>Your rules, your SOP</h3><p>Set the minimum % shelf life you accept and how many months counts as “near expiry”. Every check follows them.</p></div>
+      <div class="feat reveal"><span class="ico" style="background:#6d28d9"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/></svg></span><h3>Type dates when there’s no code</h3><p>Quick day, month and year boxes. Leave the day empty for “EXP 11/2027” labels. Scan just the barcode to fill the product.</p></div>
+      <div class="feat reveal"><span class="ico" style="background:#be185d"><svg viewBox="0 0 24 24"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></svg></span><h3>Knows your products</h3><p>Import your product list as a CSV and each scan shows the product name, pack size and item code.</p></div>
+      <div class="feat reveal"><span class="ico" style="background:#1d4ed8"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span><h3>History with undo</h3><p>Today’s summary at a glance, a “Needs attention” filter, and undo on every delete. Export to CSV whenever you need.</p></div>
+      <div class="feat reveal"><span class="ico" style="background:#17803f"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span><h3>Private by design</h3><p>No account and no tracking. Your scans never leave your device unless you export them yourself.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- GS1 DATAMATRIX -->
+<section class="sec alt" id="datamatrix">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Understanding the code</p>
+      <h2>What’s inside a GS1 DataMatrix?</h2>
+      <p>The small square code on a medicine pack isn’t just a barcode. It carries the product’s identity, batch, serial number and expiry date in a standard format defined by GS1, the global standards body. GS1 Healthcare supports GS1 DataMatrix as the 2D code for GS1 data on healthcare products.</p>
+    </div>
+
+    <div class="anat reveal">
+      <div class="dm" id="dmArt" aria-hidden="true"></div>
+      <div>
+        <p class="muted" style="font-size:14px;margin-bottom:6px">The same data, printed in human-readable form:</p>
+        <p class="hr" aria-label="(01) 09501101530003 (17) 290131 (10) LT2408A (21) SN0042977 (11) 260115">
+          <span class="seg s1"><b>(01)</b> 09501101530003</span>
+          <span class="seg s2"><b>(17)</b> 290131</span>
+          <span class="seg s3"><b>(10)</b> LT2408A</span>
+          <span class="seg s4"><b>(21)</b> SN0042977</span>
+          <span class="seg s5"><b>(11)</b> 260115</span>
+        </p>
+        <div class="legend">
+          <div><b><i style="background:var(--c1)"></i>(01) GTIN</b><span>Which product this is (GS1 sample number shown)</span></div>
+          <div><b><i style="background:var(--c2)"></i>(17) Expiry date</b><span>YYMMDD: 31 January 2029</span></div>
+          <div><b><i style="background:var(--c3)"></i>(10) Batch / lot</b><span>Links the pack to its production batch</span></div>
+          <div><b><i style="background:var(--c4)"></i>(21) Serial number</b><span>Unique to this one pack</span></div>
+          <div><b><i style="background:var(--c5)"></i>(11) Production date</b><span>YYMMDD: 15 January 2026. Optional on packs.</span></div>
         </div>
-      </details>
-      <details class="disc"><summary>Code details${ic("chevron")}</summary>
-        <dl>${rows.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
-        ${isManual?"":`<div class="raw">${esc(current.raw.replace(/\u001d/g,"<GS>"))}</div>`}
-      </details>
+      </div>
     </div>
-    <div class="v-actions">
-      ${current.logged ? `<p class="saved">${ic("check")}Saved</p>`
-        : `<button class="btn primary" type="button" id="logBtn" ${current.exp?"":"disabled"}>${current.example?"Save anyway":"Save"}</button>`}
-      <button class="btn tinted" type="button" id="nextBtn">${current.example?"Done":"Next pack"}</button>
+
+    <div class="tablewrap reveal">
+      <table>
+        <thead><tr><th>Code (AI)</th><th>Meaning</th><th>Format</th><th>Why it matters</th></tr></thead>
+        <tbody>
+          <tr><td><code>(01)</code></td><td>GTIN (Global Trade Item Number)</td><td>14 digits, the last is a check digit</td><td>Identifies the product and pack type. The scanner checks the check digit and warns if it’s wrong.</td></tr>
+          <tr><td><code>(17)</code></td><td>Expiration date</td><td>6 digits, YYMMDD</td><td>The date the scanner uses to work out the shelf life left.</td></tr>
+          <tr><td><code>(10)</code></td><td>Batch or lot number</td><td>Up to 20 letters/numbers</td><td>Needed for recalls and traceability. It’s saved with every check.</td></tr>
+          <tr><td><code>(21)</code></td><td>Serial number</td><td>Up to 20 letters/numbers</td><td>Identifies the individual pack, used by anti-falsification systems.</td></tr>
+          <tr><td><code>(11)</code></td><td>Production / manufacture date</td><td>6 digits, YYMMDD</td><td>When present, lets the scanner calculate the <b>% of shelf life remaining</b>.</td></tr>
+        </tbody>
+      </table>
     </div>
-  </div>`;
-  if (current.fresh){ current.fresh=false; if (!reduceMotion) requestAnimationFrame(()=>requestAnimationFrame(()=>{ const v=$("ringVal"); if (v) v.style.strokeDashoffset=off; })); }
-  $("expIn").addEventListener("change",e=>{ current.exp=e.target.value?new Date(e.target.value+"T00:00"):null; datesChanged(); });
-  $("mfgIn").addEventListener("change",e=>{ current.mfg=e.target.value?new Date(e.target.value+"T00:00"):null; datesChanged(); });
-  $("logBtn")?.addEventListener("click", ()=>{ current.example=false; addToLog(); });
-  $("nextBtn").addEventListener("click", nextPack);
-  $("nameForm")?.addEventListener("submit", e=>{ e.preventDefault(); const v=$("nameIn").value.trim(); if(!v) return;
-    localProducts[normG(gt)]={d:v,p:"",c:""}; store.set("sls_products",localProducts); prodCount();
-    log.forEach(r=>{ if(normG(r.gtin)===normG(gt) && !r.desc) r.desc=v; }); saveLog(); renderLog(); render();
-    toast("Name saved on this device"); });
-}
-function nextPack(){
-  const wasExample = current?.example;
-  current = null; render();
-  if (wasExample) return;
-  if (mode==="manual"){ $("enGtin").focus(); return; }
-  window.scrollTo({top:0, behavior:reduceMotion?"auto":"smooth"});
-  if (!running) toggleCam();
-}
 
-/* ---------- History ---------- */
-let filter = "all", freshId = null;
-const statusOf = s => s==="Acceptable"?"ok" : s==="Near expiry"?"warn" : /Expired|Below/.test(s)?"bad" : "none";
-const sameDay = (a,b) => a.toDateString()===b.toDateString();
-function dayLabel(d){
-  const t=new Date(), y=new Date(); y.setDate(t.getDate()-1);
-  if (sameDay(d,t)) return "Today"; if (sameDay(d,y)) return "Yesterday";
-  return d.toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",...(d.getFullYear()!==t.getFullYear()?{year:"numeric"}:{})});
-}
-function renderLog(){
-  const now=new Date(), todays=log.filter(r=>sameDay(new Date(r.t),now)), cnt={ok:0,warn:0,bad:0};
-  todays.forEach(r=>{ const s=statusOf(r.status); if (s in cnt) cnt[s]++; });
-  $("sumAll").textContent=todays.length; $("sumOk").textContent=cnt.ok; $("sumWarn").textContent=cnt.warn; $("sumBad").textContent=cnt.bad;
-  $("tabBadge").textContent=todays.length; $("tabBadge").hidden=!todays.length;
-  $("logCount").textContent=log.length; $("hActions").hidden=!log.length;
-  const rows = log.filter(r=> filter==="all" || ["warn","bad"].includes(statusOf(r.status)));
-  if (!rows.length){
-    $("logList").innerHTML = `<div class="h-empty">${log.length ? "Nothing needs attention. Every pack met your rules." : "Packs you check are saved here, so you can export them later."}</div>`;
-    return;
+    <div class="cols2">
+      <div class="card reveal">
+        <h3>Why the world is moving to 2D codes</h3>
+        <p>Regulators use the DataMatrix to fight falsified medicines and improve traceability:</p>
+        <ul>
+          <li><b>European Union:</b> Delegated Regulation (EU) 2016/161 requires a Data Matrix on most prescription medicines, carrying the product code, serial number, batch number and expiry date.</li>
+          <li><b>United States:</b> under the Drug Supply Chain Security Act (DSCSA), packages carry a product identifier (NDC, serial number, lot and expiry), generally as a 2D data matrix.</li>
+          <li>Many other countries are bringing in similar rules. Check your national medicines regulator for local requirements.</li>
+        </ul>
+      </div>
+      <div class="card reveal">
+        <h3>Reading the expiry date correctly</h3>
+        <p>GS1 dates are written <b>YYMMDD</b>, so <code>290131</code> means 31 January 2029. Older labels sometimes used <b>“00” for the day</b> to mean “end of the month”. The scanner reads these as the last day of that month.</p>
+        <p>Since <b>1 January 2025</b>, GS1 rules for regulated healthcare products require a real day (for example 31, not 00), to remove any doubt about which day a pack expires.</p>
+      </div>
+    </div>
+
+    <div class="try reveal" aria-labelledby="tryTitle">
+      <h3 id="tryTitle">Try it: decode a GS1 string</h3>
+      <form id="tryForm">
+        <input id="tryIn" aria-label="GS1 code text" placeholder="(01)09501101530003(17)290131(10)LT2408A" autocomplete="off" spellcheck="false">
+        <button class="btn primary" type="submit">Decode</button>
+      </form>
+      <div class="examples">Examples:
+        <button type="button" data-ex="(01)09501101530003(17)290131(10)LT2408A(21)SN0042977">With brackets</button>
+        <button type="button" data-ex="010950110153000317270630102405B">Raw, as scanned</button>
+        <button type="button" data-ex="(01)09501101530003(17)261200(10)A1">Day “00”</button>
+      </div>
+      <div class="out" id="tryOut" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- SHELF LIFE -->
+<section class="sec" id="shelf-life">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="kicker">Understanding shelf life</p>
+      <h2>Expiry is a date. Shelf life is a decision.</h2>
+      <p>The ICH stability guideline Q1A(R2) defines a product’s <b>shelf life</b> as the time during which it is expected to stay within its approved specification, provided it is stored under the conditions on its label. The <b>expiry date</b> marks the end of that period. What matters at receiving is how much of it is <i>left</i>.</p>
+    </div>
+
+    <div class="timeline reveal" aria-label="Shelf life timeline example">
+      <div class="tl-bar">
+        <span class="tl-mark l" style="left:2px"><span>Manufactured</span></span>
+        <span class="tl-mark" style="left:38%"><span>Today</span></span>
+        <span class="tl-mark r" style="left:calc(100% - 2px)"><span>Expires</span></span>
+      </div>
+      <div class="tl-labels"><div>Accept</div><div>Near expiry</div><div>Too short</div></div>
+      <div class="formula" style="margin-top:28px">% shelf life left = (expiry − today) ÷ (expiry − manufacture) × 100</div>
+      <p class="muted" style="margin-top:12px;font-size:15px">Example: made 1 Jan 2026 and expires 31 Dec 2028 (about 36 months). Checked on 1 Jan 2027, about 24 months remain, which is <b>≈ 67% shelf life left</b>.</p>
+      <div class="status3">
+        <div class="st ok"><b>Acceptable</b>Meets your minimum % and is outside your near-expiry window.</div>
+        <div class="st warn"><b>Near expiry</b>Expires within the months you set (for example 6). Accept with care and use first.</div>
+        <div class="st bad"><b>Below minimum / Expired</b>Less shelf life left than your minimum %, or already past expiry. Don’t accept.</div>
+      </div>
+    </div>
+
+    <div class="cols2">
+      <div class="card reveal">
+        <h3>First Expiry, First Out (FEFO)</h3>
+        <p>Good storage and distribution practice, as set out in WHO guidance (TRS 1025, Annex 7) and national guidelines based on it, uses <b>FEFO</b>: stock with the earliest expiry date is issued first. Knowing the exact shelf life left at receiving helps you place stock correctly and reduce expiry waste.</p>
+      </div>
+      <div class="card reveal">
+        <h3>Minimum shelf life at delivery</h3>
+        <p>Many buyers set a minimum remaining shelf life that deliveries must meet, often in supply contracts or tenders. The right number depends on your organisation, the product and how fast you use it. The scanner lets you set your own. It doesn’t impose one.</p>
+      </div>
+    </div>
+    <div class="note reveal"><svg viewBox="0 0 24 24"><path d="M12 4.5 3 19.5h18z"/><path d="M12 10v4M12 17h.01"/></svg>
+      <div>Shelf life only holds if the product has been stored as labelled (temperature, light, humidity). A pack that has been exposed to the wrong conditions may be unfit before its expiry date. Always check storage conditions and the physical pack too.</div></div>
+  </div>
+</section>
+
+<!-- WHO IT'S FOR -->
+<section class="sec alt" id="who">
+  <div class="wrap">
+    <div class="sec-head center reveal"><p class="kicker">Who it’s for</p><h2>Built for the people who receive medicines.</h2></div>
+    <div class="who reveal">
+      <div><svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20H4z"/><path d="M10 20v-5h4v5"/><path d="M12 8.5v3M10.5 10h3"/></svg>Pharmacies</div>
+      <div><svg viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M12 7.5v5M9.5 10h5M8 17h8"/></svg>Hospital stores</div>
+      <div><svg viewBox="0 0 24 24"><path d="M3 20V9l9-5 9 5v11"/><path d="M7 20v-6h10v6M7 17h10"/></svg>Warehouses &amp; distributors</div>
+      <div><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.4"/><path d="M3.5 19c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5M14.5 14.6c2.8-.6 5.4.9 6 4.4"/></svg>Health programmes</div>
+      <div><svg viewBox="0 0 24 24"><path d="M9 4h6l1 2h3v14H5V6h3z"/><path d="m8.5 13 2.5 2.5 4.5-5"/></svg>QA &amp; inspectors</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRIVACY BAND -->
+<section class="sec">
+  <div class="wrap">
+    <div class="band reveal">
+      <div>
+        <h2>Your data stays on your device.</h2>
+        <p>Shelf Life Scanner works entirely in your browser. There’s no account, no server storing your scans and no one watching what you check.</p>
+      </div>
+      <ul>
+        <li><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>History, product names and settings are saved only on this device.</li>
+        <li><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>The camera is used only while you scan. Video is never recorded or sent anywhere.</li>
+        <li><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>No cookies, no analytics, no ads.</li>
+        <li><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Export or delete your records whenever you choose.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="sec alt" id="faq">
+  <div class="wrap">
+    <div class="sec-head center reveal"><p class="kicker">FAQ</p><h2>Questions, answered.</h2></div>
+    <div class="faq-groups">
+
+      <div class="faq-group reveal">
+        <h3>Getting started</h3>
+        <div class="faq">
+          <details><summary>Is Shelf Life Scanner free?</summary><div class="a"><p>Yes. It’s free to use with no account and no sign-up.</p></div></details>
+          <details><summary>Do I need to install an app?</summary><div class="a"><p>No. It runs in your web browser. If you want it one tap away, add it to your home screen:</p><ul><li><b>iPhone / iPad (Safari):</b> Share → Add to Home Screen.</li><li><b>Android (Chrome):</b> ⋮ menu → Add to Home screen (or Install app).</li></ul><p>It then opens full-screen, like an app.</p></div></details>
+          <details><summary>Which phones and browsers work?</summary><div class="a"><p>Recent versions of Chrome, Edge, Safari and Firefox on Android, iPhone, iPad, Windows and Mac. Camera scanning needs a device with a camera and your permission to use it. On older devices you can still choose a photo, type the code or type the dates.</p></div></details>
+          <details><summary>Does it work without internet?</summary><div class="a"><p>You need a connection to open the page and load the scanning engine. After that, every check is worked out on your device, and nothing is sent anywhere. Typing dates by hand doesn’t need the scanning engine at all.</p></div></details>
+          <details><summary>Can I use a USB or Bluetooth barcode scanner?</summary><div class="a"><p>Yes. Most handheld scanners act like a keyboard. Open the scanner page, make sure no text box is selected, and scan. The code is read automatically.</p></div></details>
+        </div>
+      </div>
+
+      <div class="faq-group reveal">
+        <h3>Scanning</h3>
+        <div class="faq">
+          <details><summary>Which codes can it read?</summary><div class="a"><p>GS1 DataMatrix (the square 2D code on medicine packs), GS1-128, GS1 QR codes, and standard EAN-13, EAN-8, UPC-A and UPC-E retail barcodes. Code 39 and ITF are also recognised. Retail barcodes only carry the product number, so you’ll be asked to enter the expiry date.</p></div></details>
+          <details><summary>The camera won’t start. What can I do?</summary><div class="a"><ul><li>Allow camera access when your browser asks. If you said no before, re-enable it in the browser’s site settings.</li><li>Close other apps that might be using the camera.</li><li>If you opened the link inside another app (for example a chat app), open it in Chrome or Safari instead.</li><li>You can always use <b>Photo</b> or type the code instead.</li></ul></div></details>
+          <details><summary>It won’t read my code. Why?</summary><div class="a"><ul><li>Hold the pack 10–15 cm away, keep it steady, and fill the frame with the code.</li><li>Avoid glare from shiny foil. Tilt the pack slightly.</li><li>Good light helps a lot.</li><li>Very small, damaged or poorly printed codes may not read. Use <b>Type</b> and enter the dates from the label instead.</li></ul></div></details>
+          <details><summary>What if the pack has no 2D code?</summary><div class="a"><p>Switch to <b>Type</b>. Scan the ordinary barcode to fill the product (optional), then type the expiry date in the day, month and year boxes. Add the manufacture date if you want the % shelf life left.</p></div></details>
+          <details><summary>What does “check digit fails” mean?</summary><div class="a"><p>The last digit of every GTIN is calculated from the others. If it doesn’t match, the number was misread, mistyped or misprinted. Re-scan, and treat the pack with caution if it still fails.</p></div></details>
+        </div>
+      </div>
+
+      <div class="faq-group reveal">
+        <h3>Dates &amp; results</h3>
+        <div class="faq">
+          <details><summary>How is “% shelf life left” worked out?</summary><div class="a"><p>(expiry − today) ÷ (expiry − manufacture) × 100. It needs both dates, so it only shows when the code has a production date (AI 11) or you type a manufacture date.</p></div></details>
+          <details><summary>How does it decide Acceptable, Near expiry or Below minimum?</summary><div class="a"><ul><li><b>Expired:</b> the expiry date has passed.</li><li><b>Below minimum shelf life:</b> the % left is lower than your minimum (default 60%).</li><li><b>Near expiry:</b> it expires within your warning window (default 6 months).</li><li><b>Acceptable:</b> none of the above.</li></ul><p>Change these in <b>Settings → Receiving rules</b> to match your SOP.</p></div></details>
+          <details><summary>The label only says “EXP 11/2027”. Which day is that?</summary><div class="a"><p>A month-only expiry is usually taken to mean the <b>last day of that month</b>, and that’s how the scanner reads it when you leave the day box empty. If your organisation or the manufacturer uses a different convention, type the exact day.</p></div></details>
+          <details><summary>What about codes that use “00” as the day?</summary><div class="a"><p>Older GS1 codes may show a day of “00”, meaning the end of the month. The scanner reads it as the last day of that month. Since 1 January 2025, GS1 rules for regulated healthcare products require a real day instead.</p></div></details>
+          <details><summary>Why does a shiny new delivery show “Near expiry”?</summary><div class="a"><p>Near expiry is based only on time left, not on how new the delivery is. Short-dated stock is common for some products. Check your warning window in Settings, and decide according to your SOP and supplier agreement.</p></div></details>
+        </div>
+      </div>
+
+      <div class="faq-group reveal">
+        <h3>Your data</h3>
+        <div class="faq">
+          <details><summary>Where is my history stored?</summary><div class="a"><p>In your browser’s storage on the device you used. It’s not uploaded and not synced between devices. If you clear your browser data, use a private window, or switch browsers, your history won’t be there. <b>Export a CSV regularly</b> if you need to keep records.</p></div></details>
+          <details><summary>Can my team share one history?</summary><div class="a"><p>Not yet. Each device keeps its own history. Each person can export a CSV and combine them in a spreadsheet.</p></div></details>
+          <details><summary>How do I import my product list?</summary><div class="a"><p>Open <b>Settings → Products → Import CSV</b>. The file needs a header row with a <b>GTIN</b> (or Barcode) column and a <b>Description</b> (or Product name) column. Pack and Item code columns are optional. Names you type for unknown packs are remembered too.</p></div></details>
+          <details><summary>How do I delete everything?</summary><div class="a"><p>Use <b>History → Clear all</b> to remove your checks. To remove everything, including products and settings, clear this site’s data in your browser settings.</p></div></details>
+        </div>
+      </div>
+
+      <div class="faq-group reveal">
+        <h3>Safety &amp; compliance</h3>
+        <div class="faq">
+          <details><summary>Can it tell if a medicine is falsified or counterfeit?</summary><div class="a"><p><b>No.</b> The scanner only reads what is printed in the code. Confirming that a pack is genuine requires checking its serial number against an official verification system (such as the EU’s medicines verification system) or other checks required by your regulator. A correctly formatted code doesn’t prove a pack is genuine.</p></div></details>
+          <details><summary>Is this a medical device or regulator-approved?</summary><div class="a"><p>No. It’s a general decision-support tool for checking dates. It is not a medical device, isn’t approved by any regulator, and doesn’t replace your organisation’s procedures or professional judgement.</p></div></details>
+          <details><summary>Is Shelf Life Scanner made by GS1?</summary><div class="a"><p>No. It reads codes that follow GS1 standards, but it is an independent tool made by Lumetis Pharma. It is not affiliated with or endorsed by GS1.</p></div></details>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- LEGAL -->
+<section class="sec" id="legal">
+  <div class="wrap legal">
+    <div class="card reveal" id="disclaimer">
+      <p class="kicker">Disclaimer</p>
+      <h2>Please read before relying on a result</h2>
+      <p class="updated">Last updated 3 November 2026</p>
+      <ul>
+        <li><b>Decision support only.</b> Shelf Life Scanner helps you read and interpret dates. It does not replace the printed label, your standard operating procedures, supplier agreements, applicable law or professional judgement. Final decisions to accept, store, issue or dispense a product are yours.</li>
+        <li><b>Always confirm against the pack.</b> Codes can be damaged, misprinted or misread, and dates can be typed incorrectly. Check the result against the human-readable text on the pack before acting on it.</li>
+        <li><b>Not an authenticity check.</b> The tool cannot detect falsified, substandard, tampered-with or recalled products, and cannot confirm that a product has been stored correctly.</li>
+        <li><b>Date interpretation.</b> Dates are read following GS1 conventions (YYMMDD; a day of “00” and month-only dates are read as the last day of the month). If a manufacturer uses a different convention, the result may differ.</li>
+        <li><b>Your settings.</b> Verdicts depend on the receiving rules you set. The defaults (60% minimum, 6-month warning) are examples, not recommendations.</li>
+        <li><b>Not a medical device.</b> The tool is not intended for diagnosis, treatment or any clinical purpose, and has not been reviewed or approved by any regulatory authority.</li>
+        <li><b>No warranty.</b> The service is provided “as is” and “as available”, without warranties of any kind. To the fullest extent permitted by law, Lumetis Pharma is not liable for any loss or damage arising from use of, or reliance on, the tool.</li>
+        <li><b>Trademarks.</b> GS1, GS1 DataMatrix and GS1-128 are trademarks of GS1 AISBL. Shelf Life Scanner is independent and not affiliated with or endorsed by GS1. The example product number shown is a GS1 sample GTIN.</li>
+      </ul>
+    </div>
+
+    <div class="card reveal" id="privacy">
+      <p class="kicker">Privacy notice</p>
+      <h2>What happens to your information</h2>
+      <p class="updated">Last updated 3 November 2026</p>
+      <h3>The short version</h3>
+      <p>Lumetis Pharma does not collect, store or receive your scans, product lists or settings. They stay in your browser on your device.</p>
+      <h3>What is stored on your device</h3>
+      <ul>
+        <li>Your scan history (product, GTIN, batch, serial, dates, result and time).</li>
+        <li>Product names you import or type.</li>
+        <li>Your settings: receiving rules, theme and entry mode.</li>
+      </ul>
+      <p>This is kept in your browser’s local storage, only on that device. You can delete it at any time with History → Clear all, or by clearing this site’s data in your browser.</p>
+      <h3>Camera and photos</h3>
+      <p>The camera is used only after you tap to scan and grant permission, and it stops when you stop scanning or leave the Check tab. Video frames and photos you choose are processed on your device to find a code. They are never saved or sent anywhere.</p>
+      <h3>Services that receive basic technical data</h3>
+      <ul>
+        <li><b>Website hosting:</b> this site is hosted on GitHub Pages. Like any web host, GitHub may record technical information such as your IP address when the page loads. See <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub’s privacy statement</a>.</li>
+        <li><b>Scanning engine:</b> the barcode-reading library (html5-qrcode) is loaded from public content delivery networks (jsDelivr, unpkg or cdnjs), which receive standard request data such as your IP address. Your scans are not sent to them.</li>
+      </ul>
+      <h3>What we don’t do</h3>
+      <p>No accounts, no cookies, no analytics or tracking, no advertising, and no selling or sharing of data.</p>
+      <h3>Exports</h3>
+      <p>CSV files you export or copy are under your control. Handle them according to your organisation’s data and record-keeping policies.</p>
+      <h3>Children</h3>
+      <p>The service is intended for professional use and is not directed at children.</p>
+      <h3>Changes</h3>
+      <p>If this notice changes, the “Last updated” date above will change too.</p>
+    </div>
+
+    <div class="card reveal" id="terms">
+      <p class="kicker">Terms of use</p>
+      <h2>Using Shelf Life Scanner</h2>
+      <ul>
+        <li>You may use the tool free of charge for personal and professional purposes.</li>
+        <li>You are responsible for how you use the results and for meeting the laws, regulations and procedures that apply to you.</li>
+        <li>Don’t misuse the service, for example by trying to disrupt it or using it for unlawful purposes.</li>
+        <li>Features may change or be withdrawn at any time. Export any records you need to keep.</li>
+        <li>The Disclaimer and Privacy notice above form part of these terms.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final alt">
+  <div class="wrap reveal">
+    <h2>Check your next delivery in seconds.</h2>
+    <p class="lead" style="margin:16px auto 0">Free, private, and ready on the phone in your pocket.</p>
+    <div class="cta"><a class="btn primary" href="app/">Open the scanner</a></div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="icons/icon.svg" alt="">Shelf Life Scanner <span class="muted" style="font-weight:400">by Lumetis Pharma</span></a>
+    <div class="links"><a href="app/">Scanner</a><a href="#how">How it works</a><a href="#datamatrix">GS1 DataMatrix</a><a href="#shelf-life">Shelf life</a><a href="#faq">FAQ</a><a href="#disclaimer">Disclaimer</a><a href="#privacy">Privacy</a><a href="#terms">Terms</a></div>
+    <div>
+      <p style="font-weight:600;color:var(--ink);margin-bottom:8px">References</p>
+      <ol class="sources">
+        <li><a href="https://gs1au.org/standards/barcodes/2d-barcodes/gs1-datamatrix" rel="noopener">GS1 Australia: GS1 DataMatrix</a></li>
+        <li><a href="https://www.gs1.org/docs/healthcare/position-papers/GS1-DataMatrix-Position-Paper-FINAL.pdf" rel="noopener">GS1 Healthcare: GS1 DataMatrix position paper</a></li>
+        <li><a href="https://www.gs1.org/docs/barcodes/GSCN_21-040_HealthcareExpDate.pdf" rel="noopener">GS1 GSCN 21-040: expiry date day of month in regulated healthcare</a></li>
+        <li><a href="https://www.gs1uk.org/insights/news/change-of-date-format-for-regulated-healthcare-products" rel="noopener">GS1 UK: Change of date format for regulated healthcare products</a></li>
+        <li><a href="https://eur-lex.europa.eu/eli/reg_del/2016/161/oj" rel="noopener">Commission Delegated Regulation (EU) 2016/161</a></li>
+        <li><a href="https://www.fda.gov/drugs/drug-supply-chain-security-act-dscsa/fda-issues-draft-guidance-product-identifier-requirements-under-drug-supply-chain-security-act" rel="noopener">US FDA: Product identifier requirements under the DSCSA</a></li>
+        <li><a href="https://www.ich.org/page/quality-guidelines" rel="noopener">ICH Quality Guidelines: Q1A(R2) Stability testing</a></li>
+        <li><a href="https://www.who.int/publications/m/item/trs-1025-annex-7" rel="noopener">WHO TRS 1025, Annex 7: Good storage and distribution practices</a></li>
+      </ol>
+    </div>
+    <p>© 2026 Lumetis Pharma. GS1 and GS1 DataMatrix are trademarks of GS1 AISBL; used here only to describe compatibility. Information on this page is general guidance, not legal or regulatory advice.</p>
+  </div>
+</footer>
+
+<script src="gs1.js"></script>
+<script>
+/* Decorative DataMatrix pattern (not a real, scannable code) */
+(function(){
+  const el=document.getElementById("dmArt"); let seed=7, html="";
+  const rnd=()=> (seed = (seed*9301+49297)%233280)/233280;
+  for(let r=0;r<18;r++) for(let c=0;c<18;c++){
+    const top=r===0 && c%2===0, right=c===17 && r%2===1;
+    const on = top || right || (r>0 && c<17 && rnd()>.5);
+    html += `<i style="${on?"":"background:transparent"}"></i>`;
   }
-  let html="", last="";
-  for (const r of rows){
-    const d=new Date(r.t), lab=dayLabel(d), s=statusOf(r.status);
-    if (lab!==last){ if (last) html+="</ul>"; html+=`<h3 class="day">${esc(lab)}</h3><ul class="group">`; last=lab; }
-    const exp = r.exp ? fmtD(new Date(r.exp+"T00:00")) : "no expiry";
-    const name = r.desc || product(r.gtin)?.d || (r.gtin ? "GTIN "+r.gtin : "Unnamed pack");
-    const pill = r.days==="" ? "—" : +r.days<0 ? "Expired" : `${r.days} d`;
-    html += `<li class="item${r.id===freshId?" new":""}"><span class="dot t-${s}" aria-hidden="true"></span>
-      <div class="main"><b>${esc(name)}</b><span>${esc([r.batch&&"Lot "+r.batch, "Exp "+exp, d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})].filter(Boolean).join(" · "))}</span></div>
-      <span class="pill t-${s}" title="${esc(r.status)}"><span class="sr">${esc(r.status)}, </span>${esc(pill)}</span>
-      <button class="del" type="button" data-id="${esc(r.id)}" aria-label="Delete ${esc(name)}">${ic("trash")}</button></li>`;
-  }
-  $("logList").innerHTML = html + "</ul>"; freshId = null;
-}
-$("logList").addEventListener("click", e=>{
-  const b=e.target.closest(".del"); if(!b) return;
-  const i=log.findIndex(r=>r.id===b.dataset.id); if (i<0) return;
-  const [gone]=log.splice(i,1); saveLog(); renderLog();
-  if (current?.logId===gone.id){ current.logged=false; render(); }
-  toast("Entry deleted", ()=>{ log.splice(i,0,gone); saveLog(); if (current?.logId===gone.id){ current.logged=true; render(); } renderLog(); });
-});
-$("filterSeg").addEventListener("click", e=>{
-  const b=e.target.closest("button"); if(!b) return; filter=b.dataset.f;
-  $("filterSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); renderLog();
-});
-function csv(){
-  const cols=["t","desc","kind","gtin","batch","serial","mfg","exp","days","pct","status","raw"];
-  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
-  return [ ["Time","Product","Type","GTIN","Batch","Serial","Manufacture","Expiry","Days left","% remaining","Status","Raw"].join(","),
-    ...log.map(r=>cols.map(c=>q(c==="desc"?(r.desc||product(r.gtin)?.d||""):r[c])).join(",")) ].join("\n");
-}
-$("dlBtn").onclick = ()=>{
-  try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv()],{type:"text/csv"}));
-    a.download=`shelf-life-log-${isoD(new Date())}.csv`; document.body.appendChild(a); a.click(); a.remove(); toast("CSV exported"); }
-  catch{ $("csvBox").value=csv(); $("csvBox").hidden=false; }
-};
-$("copyBtn").onclick = ()=>{
-  const t=csv();
-  const fallback=()=>{ $("csvBox").value=t; $("csvBox").hidden=false; $("csvBox").select(); };
-  navigator.clipboard ? navigator.clipboard.writeText(t).then(()=>toast(`Copied ${log.length} entries`)).catch(fallback) : fallback();
-};
-$("clearBtn").onclick = ()=>{
-  if (!log.length) return;
-  const snap = log; log=[]; saveLog(); renderLog(); $("csvBox").hidden=true;
-  if (current?.logged){ current.logged=false; render(); }
-  toast(`Cleared ${snap.length} ${snap.length===1?"entry":"entries"}`, ()=>{ log=snap; saveLog(); renderLog(); });
-};
-
-/* ---------- Navigation: tabs (phones) and settings sheet ---------- */
-function setView(v){
-  document.body.dataset.view=v;
-  document.querySelectorAll(".tab").forEach(t=>{ if (t.dataset.view===v) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
-  if (v!=="check" && running && isNarrow()) stopCam();
-  window.scrollTo(0,0);
-}
-document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>setView(t.dataset.view)));
-$("openSettings").onclick = ()=>$("settings").showModal();
-$("settings").addEventListener("click", e=>{ if (e.target===$("settings")) $("settings").close(); });
-
-$("manualForm").addEventListener("submit", e=>{ e.preventDefault(); const v=$("manualInput").value.trim(); if(v){ lastText=""; handle(v, ""); $("manualInput").value=""; } });
-
-/* ---------- Manual date entry (optionally with a scanned barcode) ---------- */
-let mode = store.get("sls_mode","scan")==="manual" ? "manual" : "scan";
-const MONTHS = ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"];
-/* Accepts DD/MM/YYYY, DD-MM-YY, DD.MM.YYYY, YYYY-MM-DD, MM/YYYY, YYYY-MM, DDMMYYYY, "30 Nov 2027", "Nov 2027".
-   Month-only = last day of that month. Day-first order. */
-function parseUserDate(str){
-  const s = String(str||"").trim().toLowerCase().replace(/^(exp|expiry|mfg|mfd|best before|bb|use by)[:.\s]*/,"");
-  if (!s) return null;
-  const mk = (y,mo,d) => { if (y<100) y+=2000; if (!(mo>=1&&mo<=12) || y<1900 || y>2200) return null;
-    const last = new Date(y,mo,0).getDate(); if (d==null) d=last; if (d<1||d>last) return null; return new Date(y,mo-1,d); };
-  let m;
-  if ((m=s.match(/^(\d{4})[-\/.](\d{1,2})(?:[-\/.](\d{1,2}))?$/))) return mk(+m[1],+m[2],m[3]?+m[3]:null);
-  if ((m=s.match(/^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4}|\d{2})$/))) return mk(+m[3],+m[2],+m[1]);
-  if ((m=s.match(/^(\d{1,2})[-\/. ](\d{4}|\d{2})$/))) return mk(+m[2],+m[1],null);
-  if ((m=s.match(/^(\d{2})(\d{2})(\d{4})$/))) return mk(+m[3],+m[2],+m[1]);
-  if ((m=s.match(/^(?:(\d{1,2})[\s\-\/.]*)?([a-z]{3})[a-z]*\.?[\s\-\/.,]*(\d{4}|\d{2})$/))){
-    const mo = MONTHS.indexOf(m[2])+1; return mo ? mk(+m[3], mo, m[1]?+m[1]:null) : null; }
-  return null;
-}
-/* Day / month / year boxes. Day may be left empty (month-only date). */
-const part = (k,p) => $(k+p);
-function readDate(k){
-  const d=part(k,"D").value.trim(), m=part(k,"M").value.trim(), y=part(k,"Y").value.trim();
-  if (!d && !m && !y) return null;
-  if (!m || !(y.length===2 || y.length===4)) return undefined;
-  return parseUserDate(d ? `${d}/${m}/${y}` : `${m}/${y}`) || undefined;
-}
-function writeDate(k, date){
-  part(k,"D").value = date ? String(date.getDate()).padStart(2,"0") : "";
-  part(k,"M").value = date ? String(date.getMonth()+1).padStart(2,"0") : "";
-  part(k,"Y").value = date ? String(date.getFullYear()) : "";
-  dateHint(k, k+"Hint", true); $(k+"Pick").value = date ? isoD(date) : "";
-}
-/* strict=false while typing: don't nag about a half-typed date */
-function dateHint(k, hintId, strict){
-  const d=readDate(k), h=$(hintId), y=part(k,"Y").value.trim();
-  if (d===null){ h.textContent=""; h.className="hint"; return null; }
-  if (d===undefined){
-    if (strict || y.length===4){ h.textContent = part(k,"M").value ? "Not a real date" : "Month and year needed"; h.className="hint err"; }
-    else { h.textContent=""; h.className="hint"; }
-    return undefined;
-  }
-  h.textContent = fmtD(d) + (part(k,"D").value ? "" : " (end of month)"); h.className="hint ok"; return d;
-}
-function gtinHint(){ const p=product($("enGtin").value.trim()); if (p && !$("enName").dataset.touched) $("enName").value = p.d; }
-["enExp","enMfg"].forEach(k=>{
-  const D=part(k,"D"), M=part(k,"M"), Y=part(k,"Y"), pk=$(k+"Pick"), order=[D,M,Y];
-  const update = () => { const d=dateHint(k, k+"Hint", false); pk.value = d ? isoD(d) : ""; };
-  order.forEach((el,i)=>{
-    el.addEventListener("input", ()=>{
-      let v = el.value.replace(/\D/g,""); el.value = v;
-      /* auto-advance: 2 digits, or a first digit that can't start a 2-digit day (4-9) / month (2-9) */
-      if (i<2 && v.length===1 && +v > (i===0?3:1)) { el.value = "0"+v; v = el.value; }
-      if (i<2 && v.length===2) order[i+1].focus();
-      update();
-    });
-    el.addEventListener("keydown", e=>{
-      if (e.key==="Backspace" && !el.value && i>0){ e.preventDefault(); const p=order[i-1]; p.focus(); p.value=p.value.slice(0,-1); update(); }
-      else if (["/",".","-"," "].includes(e.key) && i<2){ e.preventDefault(); if (el.value.length===1) el.value="0"+el.value; order[i+1].focus(); update(); }
-      else if (e.key==="ArrowLeft" && i>0 && el.selectionStart===0){ e.preventDefault(); order[i-1].focus(); }
-      else if (e.key==="ArrowRight" && i<2 && el.selectionStart===el.value.length){ e.preventDefault(); order[i+1].focus(); }
-    });
-    /* Pasting a whole date ("30/11/2027", "Nov 2027") into any box fills all three */
-    el.addEventListener("paste", e=>{
-      const t=(e.clipboardData||window.clipboardData)?.getData("text")||"";
-      const s=t.trim(); if (!/\D/.test(s) && s.length<=4) return;   /* plain digits for this box: let it paste */
-      const d=parseUserDate(s); if (!d) return;
-      e.preventDefault(); writeDate(k,d);
-      const monthOnly = /^\d{1,2}[-\/. ]\d{2,4}$|^\d{4}[-\/.]\d{1,2}$|^[a-z]{3,}\.?[\s\-\/.,]*\d{2,4}$/i.test(s.replace(/^(exp|expiry|mfg|mfd)[:.\s]*/i,""));
-      if (monthOnly){ D.value=""; dateHint(k,k+"Hint",true); }
-    });
-  });
-  pk.addEventListener("change", e=>{ if (e.target.value) writeDate(k, new Date(e.target.value+"T00:00")); });
-  pk.parentElement.addEventListener("click", ()=>{ try{ pk.showPicker?.(); }catch{} });
-});
-$("enGtin").addEventListener("input", gtinHint);
-$("enName").addEventListener("input", ()=>{ $("enName").dataset.touched = $("enName").value ? "1" : ""; });
-
-function fillEntry(text, format){
-  const c = classify(text, format), a = c.ais;
-  if (a["01"]) $("enGtin").value = a["01"];
-  else if (/^\d{8,14}$/.test(String(text).trim())) $("enGtin").value = String(text).trim();
-  if (a["10"]) $("enBatch").value = a["10"];
-  const e = a["17"] && gs1Date(a["17"]), m = a["11"] && gs1Date(a["11"]);
-  if (e) writeDate("enExp", e);
-  if (m) writeDate("enMfg", m);
-  $("enName").dataset.touched=""; $("enName").value=""; gtinHint();
-  buzz("ok");
-  if (running) stopCam();
-  const got = [($("enGtin").value)?"barcode":"", a["10"]?"batch":"", e?"expiry":"", m?"manufacture date":""].filter(Boolean);
-  say(got.length ? `Filled ${got.join(", ")}. ${e ? "Review and tap Check." : "Now type the expiry date."}`
-                 : "That code holds no barcode number or dates. Type the details instead.", !got.length);
-  (e ? $("entryForm").querySelector("[type=submit]") : $("enExpD")).focus();
-}
-
-$("entryForm").addEventListener("submit", e=>{
-  e.preventDefault();
-  const exp = dateHint("enExp","enExpHint",true), mfg = dateHint("enMfg","enMfgHint",true);
-  if (!exp){ if (exp===null){ $("enExpHint").textContent="Expiry date needed"; $("enExpHint").className="hint err"; } (part("enExp","M").value ? part("enExp","Y") : part("enExp","M").value===""&&part("enExp","D").value ? part("enExp","M") : $("enExpD")).focus(); return; }
-  if (mfg===undefined){ $("enMfgM").focus(); return; }
-  const gt = normG($("enGtin").value), name=$("enName").value.trim(), batch=$("enBatch").value.trim();
-  if (gt && name && product(gt)?.d!==name){ localProducts[gt]={...(localProducts[gt]||{p:"",c:""}), d:name}; store.set("sls_products",localProducts); prodCount(); }
-  const ais = {}; if (gt) ais["01"]=gt; if (batch) ais["10"]=batch;
-  const yymmdd = d => isoD(d).slice(2).replace(/-/g,"");
-  const raw = (gt?`(01)${gt}`:"") + `(17)${yymmdd(exp)}` + (mfg?`(11)${yymmdd(mfg)}`:"") + (batch?`(10)${batch}`:"");
-  current = {raw, format:"", kind:"Manual entry", ais, name:(!gt && name) ? name : "", exp, mfg, example:false, logged:false, fresh:true};
-  buzz(evaluate(exp, mfg, rules()).status);
-  addToLog();
-  say("Tap Next pack when you’re ready.");
-  resetEntry();
-  revealResult();
-});
-function resetEntry(){
-  $("entryForm").reset(); $("enName").dataset.touched="";
-  ["enExpHint","enMfgHint"].forEach(h=>{$(h).textContent="";$(h).className="hint";});
-  ["enExpPick","enMfgPick"].forEach(id=>$(id).value="");
-}
-$("enClear").onclick = ()=>{ resetEntry(); $("enGtin").focus(); };
-$("enScan").onclick = ()=>toggleCam();
-
-const MSG = {scan:"Hold the code 10–15 cm from the camera.", manual:"Type the dates from the label, or tap the camera to fill from the barcode."};
-function setMode(m){
-  mode = m; store.set("sls_mode", m); document.body.dataset.mode = m;
-  $("modeScan").setAttribute("aria-pressed", String(m==="scan")); $("modeManual").setAttribute("aria-pressed", String(m==="manual"));
-  $("scanActions").hidden = $("pasteBox").hidden = m==="manual"; $("entryForm").hidden = m!=="manual";
-  if (running && m==="manual") stopCam();
-  say(MSG[m]);
-}
-$("modeScan").onclick = ()=>setMode("scan");
-$("modeManual").onclick = ()=>setMode("manual");
-
-/* Hardware barcode scanners (keyboard wedge): fast keystrokes ending in Enter, when no field has focus */
-let kb="", kbT=0;
-document.addEventListener("keydown", e=>{
-  if (e.target.closest?.("input,textarea,select,dialog") || e.ctrlKey || e.metaKey || e.altKey) return;
-  const t=performance.now(); if (t-kbT>100) kb=""; kbT=t;
-  if (e.key==="Enter"){ if (kb.length>=8){ e.preventDefault(); lastText=""; onScan(kb,""); } kb=""; return; }
-  if (e.key.length===1) kb+=e.key;
-});
-
-/* ---------- Scanner engine: CDN library (3 mirrors) with native BarcodeDetector fallback ---------- */
-const LIB_URLS = [
-  "html5-qrcode.min.js",  /* optional local copy next to index.html — most reliable */
-  "https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js",
-  "https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"
-];
-function loadScript(src, ms=8000){
-  return new Promise((ok, fail)=>{
-    const s=document.createElement("script"); s.src=src; s.async=true;
-    const t=setTimeout(()=>{s.remove(); fail(new Error("timeout"))}, ms);
-    s.onload=()=>{clearTimeout(t); (window.Html5Qrcode||window.__Html5QrcodeLibrary__?.Html5Qrcode)?ok():fail(new Error("empty"))};
-    s.onerror=()=>{clearTimeout(t); s.remove(); fail(new Error("error"))};
-    document.head.appendChild(s);
-  });
-}
-const libReady = (async()=>{
-  for (const u of LIB_URLS){ try{ await loadScript(u); return true; }catch{} }
-  return false;
+  el.innerHTML=html;
 })();
-const NATIVE_FORMATS = ["data_matrix","qr_code","code_128","ean_13","ean_8","upc_a","upc_e","code_39","itf"];
-async function nativeDetector(){
-  if (!("BarcodeDetector" in window)) return null;
-  try{
-    const sup = await BarcodeDetector.getSupportedFormats();
-    const f = NATIVE_FORMATS.filter(x=>sup.includes(x));
-    return f.length ? new BarcodeDetector({formats:f}) : null;
-  }catch{ return null; }
-}
 
-let scanner=null, running=false, starting=false, engine=null, nativeStream=null, nativeTimer=null, lastText="", lastAt=0;
-function Lib(){ return window.Html5Qrcode || window.__Html5QrcodeLibrary__?.Html5Qrcode; }
-function formats(){
-  const F = window.Html5QrcodeSupportedFormats || window.__Html5QrcodeLibrary__?.Html5QrcodeSupportedFormats; if (!F) return undefined;
-  return [F.DATA_MATRIX,F.QR_CODE,F.CODE_128,F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_39,F.ITF];
+/* Decoder demo, same parsing as the scanner */
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=d=>d?d.toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"}):"";
+function decode(v){
+  const out=document.getElementById("tryOut");
+  const ais=parseGS1(v);
+  if(!ais){ out.innerHTML=`<p class="err">That doesn’t look like GS1 data. Try one of the examples.</p>`; return; }
+  const ORDER=["01","17","11","10","21"], rank=k=>{const i=ORDER.indexOf(k); return i<0?99:i;};
+  const rows=Object.entries(ais).sort((x,y)=>rank(x[0])-rank(y[0])).map(([k,val])=>{
+    let extra="";
+    if (AI[k]?.d){ const d=gs1Date(val); extra = d ? " → "+fmt(d)+(val.slice(4)==="00"?" (day 00 = end of month)":"") : " → not a valid date"; }
+    if (k==="01") extra = gtinCheckOk(val) ? " → check digit OK" : " → check digit fails";
+    return `<div class="row"><b>(${esc(k)}) ${esc(AI[k]?.n||"Unknown")}</b><code>${esc(val)}</code><span class="muted">${esc(extra)}</span></div>`;
+  }).join("");
+  let life="";
+  if (ais["17"]){ const e=gs1Date(ais["17"]), t=new Date(); t.setHours(0,0,0,0); const days=Math.round((e-t)/864e5);
+    life=`<div class="row"><b>Shelf life left</b><span>${days<0? Math.abs(days)+" days past expiry" : days+" days (≈ "+(days/30.4375).toFixed(1)+" months)"}</span></div>`; }
+  out.innerHTML = rows + life + `<p class="muted" style="font-size:14px">Open the scanner to check real packs against your rules.</p>`;
 }
-function onScan(text, format){
-  const now=Date.now(); if (text===lastText && now-lastAt<8000) return; lastText=text; lastAt=now;
-  if (mode==="manual"){ fillEntry(text, format||""); return; }
-  handle(text, format||"");
-}
-function say(t, err=false){ const m=$("camMsg"); m.textContent=t; m.className= err?"note err":"note"; }
-const NO_ENGINE = "The scanner couldn’t load and this browser has no built-in reader. Check your connection and reload, or type the code instead.";
-const CAM_BLOCKED = "Camera access is off. Allow it in your browser settings, or use Photo instead.";
-function setCamUI(on){
-  running = on; $("vf").classList.toggle("on", on);
-  $("camBtn").querySelector("span").textContent = on ? "Stop camera" : "Start camera";
-  $("camBtn").setAttribute("aria-pressed", String(on));
-}
-async function stopCam(){
-  if (engine==="lib" && scanner) await scanner.stop().catch(()=>{});
-  if (engine==="native"){ clearInterval(nativeTimer); nativeStream?.getTracks().forEach(t=>t.stop()); $("reader").innerHTML=""; }
-  engine=null; setCamUI(false);
-  if (mode==="scan" && !$("camMsg").classList.contains("err")) say(MSG.scan);
-}
-async function toggleCam(){
-  if (starting) return;
-  if (running) return stopCam();
-  starting = true; say("Starting camera…");
-  try{
-    const hasLib = await libReady;
-    $("vf").classList.add("on");
-    if (hasLib){
-      scanner = scanner || new (Lib())("reader", {formatsToSupport:formats(), experimentalFeatures:{useBarCodeDetectorIfSupported:true}, verbose:false});
-      try{
-        await scanner.start({facingMode:"environment"}, {fps:12, qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*0.7);return {width:s,height:Math.floor(s*0.75)}}, aspectRatio:1.333},
-          (t,r)=>onScan(t, r?.result?.format?.formatName), ()=>{});
-        engine="lib"; setCamUI(true); say(mode==="manual" ? "Point at the barcode." : "Hold the code inside the box.");
-      }catch{ setCamUI(false); say(CAM_BLOCKED, true); }
-      return;
-    }
-    const det = await nativeDetector();
-    if (!det){ setCamUI(false); say(NO_ENGINE, true); return; }
-    try{
-      nativeStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment", width:{ideal:1280}}});
-      const v=document.createElement("video"); v.setAttribute("playsinline",""); v.muted=true; v.srcObject=nativeStream;
-      $("reader").innerHTML=""; $("reader").appendChild(v); await v.play();
-      engine="native"; setCamUI(true); say(mode==="manual" ? "Point at the barcode." : "Hold the code in view.");
-      let busy=false;
-      nativeTimer=setInterval(async()=>{
-        if (busy||v.readyState<2) return; busy=true;
-        try{ const r=await det.detect(v); if (r[0]) onScan(r[0].rawValue, r[0].format.toUpperCase()); }catch{}
-        busy=false;
-      }, 200);
-    }catch{ setCamUI(false); say(CAM_BLOCKED, true); }
-  } finally { starting=false; }
-}
-$("camBtn").onclick = toggleCam;
-$("vfIdle").onclick = toggleCam;
-$("vfClose").onclick = stopCam;
+document.getElementById("tryForm").addEventListener("submit",e=>{ e.preventDefault(); const v=document.getElementById("tryIn").value.trim(); if(v) decode(v); });
+document.querySelectorAll("[data-ex]").forEach(b=>b.addEventListener("click",()=>{ document.getElementById("tryIn").value=b.dataset.ex; decode(b.dataset.ex); }));
 
-/* Photo decoding: native reader first, then the library on several resized/cropped versions.
-   Phone photos are 8–50 MP; ZXing often misses a small DataMatrix at full size, so we downscale and crop. */
-async function loadImage(file){
-  try{ return await createImageBitmap(file, {imageOrientation:"from-image"}); }
-  catch{ return await new Promise((ok,fail)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=fail; i.src=URL.createObjectURL(file); }); }
-}
-function variant(img, maxSide, crop=1){
-  const W=img.width, H=img.height, cw=W*crop, ch=H*crop, sx=(W-cw)/2, sy=(H-ch)/2;
-  const k=Math.min(1, maxSide/Math.max(cw,ch));
-  const c=document.createElement("canvas"); c.width=Math.round(cw*k); c.height=Math.round(ch*k);
-  const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height);
-  g.drawImage(img, sx, sy, cw, ch, 0, 0, c.width, c.height);
-  return c;
-}
-const toFile = c => new Promise(ok=>c.toBlob(b=>ok(new File([b],"scan.png",{type:"image/png"})),"image/png"));
-async function decodePhoto(file){
-  const img = await loadImage(file);
-  const plans = [[1600,1],[1000,1],[1200,0.6],[1000,0.4],[2400,1]];
-  const det = await nativeDetector();
-  if (det){
-    for (const [m,cr] of [[img.width>3000?2000:9999,1],...plans]){
-      try{ const r=await det.detect(variant(img,m,cr)); if (r[0]) return {text:r[0].rawValue, format:r[0].format.toUpperCase()}; }catch{}
-    }
-  }
-  if (await libReady && Lib()){
-    const box=$("photoTmp");
-    for (const [m,cr] of plans){
-      const sc = new (Lib())("photoTmp", {formatsToSupport:formats(), verbose:false});
-      try{ const r = await sc.scanFileV2(await toFile(variant(img,m,cr)), false);
-           return {text:r.decodedText, format:r.result?.format?.formatName}; }
-      catch{} finally{ try{sc.clear()}catch{} box.innerHTML=""; }
-    }
-    return null;
-  }
-  if (!det) throw new Error("noengine");
-  return null;
-}
-async function onPhoto(e){
-  const f=e.target.files?.[0]; if(!f) return;
-  say("Reading photo…");
-  try{
-    const r = await decodePhoto(f);
-    if (r){ lastText=""; onScan(r.text, r.format); if (mode!=="manual") say("Read from photo."); }
-    else say("No code found. Fill the frame with the code, keep it sharp, and avoid glare.", true);
-  }catch(err){ say(err?.message==="noengine" ? NO_ENGINE : "Couldn’t open that photo. Try a JPG or PNG.", true); }
-  finally{ e.target.value=""; }
-}
-$("photo").addEventListener("change", onPhoto);
-$("enPhoto").addEventListener("change", onPhoto);
-/* Off-screen but sized: the library needs a visible width to decode files */
-const ph=document.createElement("div"); ph.id="photoTmp";
-ph.style.cssText="position:fixed;left:-10000px;top:0;width:600px;height:450px;overflow:hidden"; ph.setAttribute("aria-hidden","true");
-document.body.appendChild(ph);
-libReady.then(ok=>{ if(!ok) nativeDetector().then(d=>{ if(!d) say(NO_ENGINE, true); }); });
-
-/* ---------- Start ---------- */
-setView("check");
-setMode(mode);
-render();
-renderLog();
+/* Reveal on scroll */
+const io = "IntersectionObserver" in window ? new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } }),{threshold:.12}) : null;
+document.querySelectorAll(".reveal").forEach(el=> io ? io.observe(el) : el.classList.add("in"));
+/* Open the FAQ item a link points to */
+function openHash(){ const t=document.querySelector(location.hash||"#none"); if(t?.tagName==="DETAILS") t.open=true; }
+addEventListener("hashchange",openHash); openHash();
 </script>
