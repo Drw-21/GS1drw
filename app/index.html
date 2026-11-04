@@ -223,7 +223,11 @@ dd{margin:0;font-family:var(--mono);font-size:14px;overflow-wrap:anywhere;font-v
 .t-ok.dot{background:var(--ok-ring)} .t-warn.dot{background:var(--warn-ring)} .t-bad.dot{background:var(--bad-ring)}
 .day{font-size:13px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;padding:14px 16px 7px}
 .day:first-child{padding-top:0}
-.item{position:relative;display:flex;align-items:center;gap:12px;padding:11px 6px 11px 16px;min-height:60px}
+.item{position:relative;display:flex;align-items:center;gap:4px;padding:0 6px 0 0;min-height:60px}
+.item .open{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:11px 6px 11px 16px;min-height:60px;border:0;background:none;text-align:left;cursor:pointer;border-radius:12px;-webkit-tap-highlight-color:transparent}
+.item .open:hover{background:var(--fill)}
+.item .open:active{background:var(--fill2)}
+.item .chev{width:16px;height:16px;color:var(--faint);flex:none}
 .item.new{animation:rise .35s ease}
 .item + .item::before{content:"";position:absolute;top:0;left:38px;right:0;border-top:1px solid var(--line)}
 .item .main{flex:1;min-width:0;display:grid}
@@ -234,6 +238,21 @@ dd{margin:0;font-family:var(--mono);font-size:14px;overflow-wrap:anywhere;font-v
 .del{border:0;background:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:var(--faint);cursor:pointer;flex:none}
 .del:hover{color:var(--bad);background:var(--bad-bg)}
 .del .ic{width:19px;height:19px}
+/* Record details sheet */
+.rec-hero{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow);padding:18px;display:grid;gap:14px}
+.rec-hero .v-top{gap:16px}
+.rec-hero .ring{width:96px;height:96px}
+.rec-hero .ring-c b{font-size:25px}
+.rec-hero .v-prod{font-size:19px}
+.now{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--fill);font-size:14px}
+.now b{font-weight:600}
+.kv .row{min-height:46px;align-items:flex-start;padding-top:12px;padding-bottom:12px}
+.kv .row > .k{color:var(--muted);font-size:15px;flex-basis:120px}
+.kv .row > .v{flex:1;min-width:0;font-size:15px;overflow-wrap:anywhere;text-align:right}
+.kv .row > .v.mono{font-family:var(--mono);font-size:14px}
+.kv .warnTxt{color:var(--bad);font-size:13px;display:block}
+.rec-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rec-actions .wide{grid-column:1/-1}
 .h-empty{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow);padding:28px 20px;text-align:center;color:var(--muted);font-size:15px}
 .h-actions{display:flex;gap:8px;flex-wrap:wrap}
 .h-actions .btn{flex:1 1 auto}
@@ -256,6 +275,7 @@ textarea{width:100%;font-family:var(--mono);font-size:12px;background:var(--surf
 
 /* Settings sheet */
 dialog.sheet{border:0;padding:0;background:var(--bg);color:var(--ink);width:min(560px,calc(100% - 32px));max-height:min(86vh,820px);border-radius:22px;overflow:auto;overscroll-behavior:contain}
+dialog.sheet{box-shadow:0 0 0 1px var(--line),0 24px 60px rgba(0,0,0,.35)}
 dialog.sheet::backdrop{background:rgba(0,0,0,.38)}
 dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
 @keyframes sheetIn{from{opacity:0;transform:translateY(24px)}}
@@ -451,6 +471,11 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
       <p class="group-foot">Tip: add this page to your home screen (Share → Add to Home Screen on iPhone, or ⋮ → Add to Home screen on Android) to open it like an app.</p>
     </div>
   </div>
+</dialog>
+
+<dialog class="sheet" id="recSheet" aria-labelledby="recTitle">
+  <form method="dialog" class="sheet-head"><h2 id="recTitle">Check details</h2><button class="btn plain" type="submit" style="font-weight:600">Done</button></form>
+  <div class="sheet-body" id="recBody"></div>
 </dialog>
 
 <script src="../gs1.js"></script>
@@ -725,20 +750,119 @@ function renderLog(){
     const exp = r.exp ? fmtD(new Date(r.exp+"T00:00")) : "no expiry";
     const name = r.desc || product(r.gtin)?.d || (r.gtin ? "GTIN "+r.gtin : "Unnamed pack");
     const pill = r.days==="" ? "—" : +r.days<0 ? "Expired" : `${r.days} d`;
-    html += `<li class="item${r.id===freshId?" new":""}"><span class="dot t-${s}" aria-hidden="true"></span>
-      <div class="main"><b>${esc(name)}</b><span>${esc([r.batch&&"Lot "+r.batch, "Exp "+exp, d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})].filter(Boolean).join(" · "))}</span></div>
-      <span class="pill t-${s}" title="${esc(r.status)}"><span class="sr">${esc(r.status)}, </span>${esc(pill)}</span>
+    html += `<li class="item${r.id===freshId?" new":""}"><button class="open" type="button" data-open="${esc(r.id)}" aria-label="View details: ${esc(name)}, ${esc(r.status)}"><span class="dot t-${s}" aria-hidden="true"></span>
+      <span class="main"><b>${esc(name)}</b><span>${esc([r.batch&&"Lot "+r.batch, "Exp "+exp, d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})].filter(Boolean).join(" · "))}</span></span>
+      <span class="pill t-${s}" title="${esc(r.status)}">${esc(pill)}</span>${ic("chevron").replace('class="ic"','class="ic chev"')}</button>
       <button class="del" type="button" data-id="${esc(r.id)}" aria-label="Delete ${esc(name)}">${ic("trash")}</button></li>`;
   }
   $("logList").innerHTML = html + "</ul>"; freshId = null;
 }
-$("logList").addEventListener("click", e=>{
-  const b=e.target.closest(".del"); if(!b) return;
-  const i=log.findIndex(r=>r.id===b.dataset.id); if (i<0) return;
+function deleteEntry(id){
+  const i=log.findIndex(r=>r.id===id); if (i<0) return;
   const [gone]=log.splice(i,1); saveLog(); renderLog();
   if (current?.logId===gone.id){ current.logged=false; render(); }
   toast("Entry deleted", ()=>{ log.splice(i,0,gone); saveLog(); if (current?.logId===gone.id){ current.logged=true; render(); } renderLog(); });
+}
+$("logList").addEventListener("click", e=>{
+  const o=e.target.closest("[data-open]"); if (o) return openRecord(o.dataset.open);
+  const b=e.target.closest(".del"); if (b) deleteEntry(b.dataset.id);
 });
+
+/* ---------- Record details ---------- */
+const dOf = iso => iso ? new Date(iso+"T00:00") : null;
+const fmtDT = d => d.toLocaleString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+let openId = null;
+function recordText(r){
+  const name = r.desc || product(r.gtin)?.d || "";
+  return [ "Shelf Life Scanner – check record",
+    name && "Product: "+name, r.gtin && "GTIN: "+r.gtin, r.batch && "Batch: "+r.batch, r.serial && "Serial: "+r.serial,
+    "Expiry: "+(r.exp?fmtD(dOf(r.exp)):"—"), r.mfg && "Manufactured: "+fmtD(dOf(r.mfg)),
+    "Result: "+r.status+(r.days!==""?` (${r.days} days left`+(r.pct!==""?`, ${r.pct}% shelf life left`:"")+")":""),
+    "Checked: "+fmtDT(new Date(r.t)), r.kind && "Type: "+r.kind ].filter(Boolean).join("\n");
+}
+function openRecord(id){
+  const r = log.find(x=>x.id===id); if (!r) return;
+  openId = id;
+  const s = statusOf(r.status), p = product(r.gtin), exp = dOf(r.exp), mfg = dOf(r.mfg);
+  const name = r.desc || p?.d || (r.gtin ? "Unknown product" : "Unnamed pack");
+  const days = r.days===""?null:+r.days, pct = r.pct===""?null:+r.pct;
+  const icon = {ok:"check", warn:"alert", bad:"x", none:"calendar"}[s];
+  const frac = days==null ? 0 : pct!=null ? pct/100 : days<0 ? 0 : Math.min(1, (days/30.4375)/Math.max(12, rules().nearMonths*2));
+  const now = evaluate(exp, mfg, rules());
+  const changed = exp && (now.label!==r.status || now.days!==days);
+  const row = (k,v,mono,extra="") => v ? `<div class="row"><span class="k">${esc(k)}</span><span class="v${mono?" mono":""}">${esc(v)}${extra}</span></div>` : "";
+  const gtinWarn = r.gtin && !gtinCheckOk(r.gtin) ? `<span class="warnTxt">Check digit fails</span>` : "";
+  $("recBody").innerHTML = `
+    <div class="rec-hero v-${s}">
+      <div class="v-top">
+        <div class="ring" role="img" aria-label="${days==null?"No expiry date":Math.abs(days)+(days<0?" days past expiry":" days left")} at the time of the check">
+          <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="44"/><circle class="val" cx="50" cy="50" r="44" style="stroke-dasharray:${RING_C};stroke-dashoffset:${RING_C*(1-frac)}"/></svg>
+          <div class="ring-c">${days==null?"<b>—</b><span>no date</span>":`<b>${Math.abs(days)}</b><span>${days<0?"days ago":days===1?"day left":"days left"}</span>`}</div>
+        </div>
+        <div class="v-text">
+          <p class="v-label">${ic(icon)}${esc(r.status)}</p>
+          <h2 class="v-prod">${esc(name)}</h2>
+          <p class="v-sub">Checked ${esc(fmtDT(new Date(r.t)))}</p>
+        </div>
+      </div>
+      ${changed ? `<div class="now"><span class="dot t-${statusOf(now.label)}" aria-hidden="true"></span><span>Today: <b>${esc(now.label)}</b> · ${now.days<0?Math.abs(now.days)+" days past expiry":now.days+" days left"}${now.pct!=null?" · "+now.pct.toFixed(0)+"% left":""}</span></div>` : ""}
+    </div>
+    <div>
+      <p class="group-title">Product</p>
+      <div class="group kv">
+        ${row("Product", name)}
+        ${row("GTIN", r.gtin, true, gtinWarn)}
+        ${row("Pack", p?.p)}${row("Item code", p?.c)}
+        ${row("Batch / Lot", r.batch, true)}
+        ${row("Serial", r.serial, true)}
+        ${!r.gtin && !r.batch && !r.serial ? row("Details", "No product data in this record") : ""}
+      </div>
+    </div>
+    <div>
+      <p class="group-title">Shelf life at check</p>
+      <div class="group kv">
+        ${row("Expiry", exp ? fmtD(exp) : "Not recorded")}
+        ${row("Manufactured", mfg ? fmtD(mfg) : "Not recorded")}
+        ${row("Days left", days==null ? "—" : days<0 ? Math.abs(days)+" days past expiry" : String(days))}
+        ${row("Months left", days==null ? "—" : Math.max(0, days/30.4375).toFixed(1))}
+        ${row("Shelf life left", pct==null ? "— (needs manufacture date)" : pct+"%")}
+        ${row("Result", r.status)}
+      </div>
+    </div>
+    <div>
+      <p class="group-title">Record</p>
+      <div class="group kv">
+        ${row("Checked", fmtDT(new Date(r.t)))}
+        ${row("Type", r.kind)}
+        ${r.raw ? row("Code data", r.raw, true) : ""}
+      </div>
+    </div>
+    <div class="rec-actions">
+      <button class="btn tinted wide" type="button" id="recEdit">Edit dates on Check screen</button>
+      <button class="btn" type="button" id="recCopy" data-ic="copy"><span>Copy</span></button>
+      ${navigator.share ? `<button class="btn" type="button" id="recShare">Share</button>` : `<button class="btn danger" type="button" id="recDel">Delete</button>`}
+      ${navigator.share ? `<button class="btn danger wide" type="button" id="recDel">Delete record</button>` : ""}
+    </div>`;
+  $("recBody").querySelectorAll("[data-ic]").forEach(el=>el.insertAdjacentHTML("afterbegin", ic(el.dataset.ic)));
+  $("recCopy").onclick = ()=>{ const t=recordText(r); navigator.clipboard ? navigator.clipboard.writeText(t).then(()=>toast("Details copied")).catch(()=>toast("Couldn’t copy")) : toast("Copying isn’t available here"); };
+  $("recShare") && ($("recShare").onclick = ()=>navigator.share({title:"Shelf life check", text:recordText(r)}).catch(()=>{}));
+  $("recDel").onclick = ()=>{ $("recSheet").close(); deleteEntry(r.id); };
+  $("recEdit").onclick = ()=>{ $("recSheet").close(); loadRecord(r); };
+  if (!$("recSheet").open) $("recSheet").showModal();
+  $("recSheet").scrollTop = 0;
+}
+/* Bring a saved record back to the Check screen; date edits there update this record */
+function loadRecord(r){
+  const raw = String(r.raw||"").replace(/<GS>/g, GS);
+  const c = raw ? classify(raw, "") : {ais:{}, kind:r.kind};
+  const ais = {...c.ais}; if (r.gtin) ais["01"]=r.gtin; if (r.batch) ais["10"]=r.batch; if (r.serial) ais["21"]=r.serial;
+  current = {raw, format:"", kind:r.kind||c.kind, ais, text:c.text, name:r.desc||"", exp:dOf(r.exp), mfg:dOf(r.mfg), example:false, logged:true, logId:r.id, fresh:true};
+  setView("check"); render();
+  const dd = document.querySelector("#result details.disc"); if (dd) dd.open = true;
+  $("result").scrollIntoView({behavior:reduceMotion?"auto":"smooth", block:"start"});
+}
+$("recSheet").addEventListener("click", e=>{ if (e.target===$("recSheet")) $("recSheet").close(); });
+$("recSheet").addEventListener("close", ()=>{ openId=null; });
 $("filterSeg").addEventListener("click", e=>{
   const b=e.target.closest("button"); if(!b) return; filter=b.dataset.f;
   $("filterSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", String(x===b))); renderLog();
