@@ -16,6 +16,8 @@
 <meta name="description" content="Scan a pack and see how much shelf life it has left.">
 <title>Scanner · Shelf Life Scanner</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preload" href="../fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../fonts/fonts.css">
 <style>
 /* Design: one clear job per screen. Check a pack (scan or type) → get a verdict.
    Phones: bottom tab bar (Check / History), settings in a sheet. ≥900px: Check and History side by side. */
@@ -375,6 +377,32 @@ textarea{background:var(--surface);-webkit-backdrop-filter:blur(18px);backdrop-f
   :root{--surface:rgba(255,255,255,.94);--sheet:rgba(246,248,252,.98)}
 }
 
+/* ===== Neutral controls + type =====
+   Buttons and links are monochrome (charcoal / frosted white) so the only colour on screen
+   is the status: green Acceptable, amber Near expiry, red Expired / Below minimum. */
+:root{
+  --font:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --accent:#1d1d1f; --accent-ink:#ffffff; --accent-soft:rgba(29,29,31,.07);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--accent:#f5f5f7; --accent-ink:#121316; --accent-soft:rgba(255,255,255,.1)}}
+:root[data-theme="dark"]{--accent:#f5f5f7; --accent-ink:#121316; --accent-soft:rgba(255,255,255,.1)}
+body{font-family:var(--font);font-feature-settings:"ss01" 0;letter-spacing:-.005em}
+h1,h2,h3{letter-spacing:-.025em}
+.btn,.btn.small,.btn.sm{border-radius:999px}
+.btn.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 82%,#888),var(--accent));color:var(--accent-ink);
+  border:1px solid color-mix(in srgb,var(--accent) 80%,#999);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 8px 22px rgba(0,0,0,.18)}
+.btn:not(.primary){color:var(--ink)}
+.btn.danger{color:var(--bad)}
+.btn.tinted,.btn.ghost{background:var(--glass-sheen),var(--surface);border:1px solid var(--glass-edge);box-shadow:var(--glass-hi);color:var(--ink)}
+.seg,.seg button{border-radius:999px}
+.icon-btn,.mini,.tab[aria-current="page"],details.paste summary,.sheet-head .btn{color:var(--ink)}
+.mini{background:var(--glass-sheen),var(--surface);border:1px solid var(--glass-edge)}
+.empty-ic{color:var(--ink)}
+.badge{background:var(--ink);color:var(--bg)}
+.toast button{color:#fff;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.tab{color:var(--muted)}
+.tab[aria-current="page"] .ic{stroke-width:2.2}
+.ring-c b,.tile b,.v-prod,h1{font-weight:800}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
 
