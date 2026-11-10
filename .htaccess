@@ -1,0 +1,23 @@
+# Shelf Life Scanner: Apache settings for shared hosting (e.g. InfinityFree)
+
+# Correct file types for the app manifest and the self-hosted font
+AddType application/manifest+json .webmanifest
+AddType font/woff2 .woff2
+AddType image/svg+xml .svg
+
+DirectoryIndex index.html
+
+# The camera only works over HTTPS. Once your free SSL certificate is
+# installed and https:// loads, remove the "#" from the 3 lines below
+# to send every visitor to the secure address.
+# RewriteEngine On
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [L,R=301]
+
+# Let browsers cache fonts and icons for a week
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType font/woff2 "access plus 7 days"
+  ExpiresByType image/png "access plus 7 days"
+  ExpiresByType image/svg+xml "access plus 7 days"
+</IfModule>
