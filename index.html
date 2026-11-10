@@ -4,8 +4,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Shelf Life Scanner · Lumetis Pharma</title>
 <meta name="description" content="Scan the GS1 DataMatrix on a medicine pack and see in a second how much shelf life is left, and whether it meets your receiving rules. Free, in your browser, nothing uploaded.">
-<meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#edf1f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#05070d" media="(prefers-color-scheme: dark)">
 <meta name="author" content="Lumetis Pharma">
 <meta property="og:title" content="Shelf Life Scanner · Lumetis Pharma">
 <meta property="og:description" content="Know what’s good to go. Scan a pack, see the shelf life left, accept with confidence.">
@@ -258,6 +258,65 @@ footer a{color:var(--muted)}
 /* Reveal on scroll */
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
 .reveal.in{opacity:1;transform:none}
+/* ===== Liquid glass theme ===== */
+:root{
+  --bg:#edf1f7; --bg2:transparent; --surface:rgba(255,255,255,.5); --line:rgba(60,70,90,.12);
+  --glass-edge:rgba(255,255,255,.75); --glass-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.25);
+  --glass-sheen:linear-gradient(140deg,rgba(255,255,255,.5) 0%,rgba(255,255,255,.08) 42%,rgba(255,255,255,0) 60%,rgba(255,255,255,.14) 100%);
+  --shadow:0 12px 36px rgba(30,45,90,.10),0 1px 2px rgba(30,45,90,.06);
+  --blob1:#6fdcc9; --blob2:#8eabff; --blob3:#ffc48e; --blob4:#bba8ff; --tint:rgba(255,255,255,.28); --accent:#08786a;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#05070d; --bg2:transparent; --surface:rgba(255,255,255,.07); --line:rgba(255,255,255,.1);
+  --glass-edge:rgba(255,255,255,.16); --glass-hi:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05);
+  --glass-sheen:linear-gradient(140deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.02) 45%,rgba(255,255,255,0) 60%,rgba(255,255,255,.05) 100%);
+  --shadow:0 14px 40px rgba(0,0,0,.4); --blob1:#0b7f77; --blob2:#1a4fb8; --blob3:#8a4a1d; --blob4:#43299c; --tint:rgba(255,255,255,.03); --accent:#45d6bd}}
+:root[data-theme="dark"]{
+  --bg:#05070d; --bg2:transparent; --surface:rgba(255,255,255,.07); --line:rgba(255,255,255,.1);
+  --glass-edge:rgba(255,255,255,.16); --glass-hi:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05);
+  --glass-sheen:linear-gradient(140deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.02) 45%,rgba(255,255,255,0) 60%,rgba(255,255,255,.05) 100%);
+  --shadow:0 14px 40px rgba(0,0,0,.4); --blob1:#0b7f77; --blob2:#1a4fb8; --blob3:#8a4a1d; --blob4:#43299c; --tint:rgba(255,255,255,.03); --accent:#45d6bd}
+
+body{background:transparent}
+body::before{content:"";position:fixed;inset:-15%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(36% 30% at 12% 8%,var(--blob1) 0,transparent 70%),
+    radial-gradient(40% 34% at 92% 22%,var(--blob2) 0,transparent 70%),
+    radial-gradient(44% 38% at 78% 88%,var(--blob3) 0,transparent 70%),
+    radial-gradient(42% 36% at 8% 78%,var(--blob4) 0,transparent 70%),
+    var(--bg);
+  animation:drift 40s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(3%,-2%,0) scale(1.06)}}
+.hero::before{display:none}
+section.alt{background:var(--tint)}
+
+.step,.feat,.anat,.tablewrap,.card,.try,.timeline,.who div,.faq,.formula,.examples button,.try input{
+  background:var(--glass-sheen),var(--surface);
+  -webkit-backdrop-filter:blur(24px) saturate(175%);backdrop-filter:blur(24px) saturate(175%);
+  border:1px solid var(--glass-edge);box-shadow:var(--glass-hi),var(--shadow)}
+.formula,.examples button,.try input{box-shadow:var(--glass-hi)}
+.st{border:1px solid var(--glass-edge);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:var(--glass-hi)}
+.feat .ico{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 6px 16px rgba(0,0,0,.15);border:1px solid rgba(255,255,255,.35)}
+nav.top{background:var(--glass-sheen),color-mix(in srgb,var(--bg) 45%,transparent);border-bottom:1px solid var(--glass-edge);box-shadow:inset 0 -1px 0 rgba(255,255,255,.2)}
+.btn.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 78%,#fff),var(--accent) 55%,color-mix(in srgb,var(--accent) 88%,#000));
+  color:var(--accent-ink);border:1px solid color-mix(in srgb,var(--accent) 70%,#fff);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(0,0,0,.12),0 10px 26px color-mix(in srgb,var(--accent) 35%,transparent)}
+.btn.ghost{background:var(--glass-sheen),var(--surface);border:1px solid var(--glass-edge);box-shadow:var(--glass-hi);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.band{background:var(--glass-sheen),linear-gradient(135deg,rgba(8,111,98,.82),rgba(26,80,190,.78));border:1px solid rgba(255,255,255,.3);
+  -webkit-backdrop-filter:blur(24px) saturate(170%);backdrop-filter:blur(24px) saturate(170%);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),var(--shadow)}
+footer{background:var(--glass-sheen),var(--surface);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);border-top:1px solid var(--glass-edge)}
+.faq details{border-bottom-color:var(--line)}
+.dm{border-radius:4px}
+/* Phone mock: glass UI inside */
+.phone{background:linear-gradient(145deg,#2a2d35,#0b0b0c);border:1px solid rgba(255,255,255,.18)}
+.screen{background:radial-gradient(60% 40% at 15% 10%,#8fe9da,transparent 70%),radial-gradient(60% 45% at 95% 30%,#a9c0ff,transparent 70%),radial-gradient(70% 50% at 70% 95%,#ffd6ad,transparent 70%),#eef2f8}
+.m-card,.m-seg{background:linear-gradient(140deg,rgba(255,255,255,.6),rgba(255,255,255,.25));border:1px solid rgba(255,255,255,.8);box-shadow:inset 0 1px 0 #fff,0 8px 24px rgba(30,45,90,.12);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.m-seg span:first-child{background:rgba(255,255,255,.9)}
+.m-stats{background:rgba(118,128,150,.12)}
+.m-btns span{background:linear-gradient(180deg,#2aa594,#08786a)}
+.m-vf{border:1px solid rgba(255,255,255,.4)}
+@media (prefers-reduced-transparency:reduce){ :root{--surface:rgba(255,255,255,.94)} }
+
 @media (prefers-reduced-motion:reduce){ html{scroll-behavior:auto} .reveal{opacity:1;transform:none;transition:none} *{transition:none!important;animation:none!important} .m-ring .v{stroke-dashoffset:72} }
 </style>
 

@@ -2,8 +2,8 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#edf1f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#05070d" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Shelf Life">
@@ -294,6 +294,86 @@ dialog.sheet[open]{animation:sheetIn .35s cubic-bezier(.2,.8,.2,1)}
 .privacy .ic{color:var(--accent);margin-top:1px}
 .btn-row{display:flex;gap:8px;padding:10px 16px 12px;flex-wrap:wrap}
 .btn-row .btn{flex:1 1 auto}
+
+/* ===== Liquid glass theme =====
+   Frosted, translucent surfaces with bright specular edges, floating over a soft colour backdrop.
+   Light: white frosted glass + dark text. Dark: smoked glass + white text. */
+:root{
+  --bg:#edf1f7; --surface:rgba(255,255,255,.52); --fill:rgba(118,128,150,.12); --fill2:rgba(118,128,150,.2);
+  --line:rgba(60,70,90,.12); --seg-on:rgba(255,255,255,.88); --sheet:rgba(244,247,252,.74);
+  --glass-edge:rgba(255,255,255,.75); --glass-hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.25);
+  --glass-sheen:linear-gradient(140deg,rgba(255,255,255,.5) 0%,rgba(255,255,255,.08) 42%,rgba(255,255,255,0) 60%,rgba(255,255,255,.14) 100%);
+  --shadow:0 10px 30px rgba(30,45,90,.10),0 1px 2px rgba(30,45,90,.06);
+  --blob1:#6fdcc9; --blob2:#8eabff; --blob3:#ffc48e; --blob4:#bba8ff; --toast:rgba(30,32,40,.72); --bar:rgba(255,255,255,.55);
+  --accent:#08786a;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#05070d; --surface:rgba(255,255,255,.07); --fill:rgba(255,255,255,.07); --fill2:rgba(255,255,255,.13);
+  --line:rgba(255,255,255,.09); --seg-on:rgba(255,255,255,.2); --sheet:rgba(22,25,34,.72);
+  --glass-edge:rgba(255,255,255,.16); --glass-hi:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05);
+  --glass-sheen:linear-gradient(140deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.02) 45%,rgba(255,255,255,0) 60%,rgba(255,255,255,.05) 100%);
+  --shadow:0 12px 34px rgba(0,0,0,.35);
+  --blob1:#0b7f77; --blob2:#1a4fb8; --blob3:#8a4a1d; --blob4:#43299c; --toast:rgba(40,44,56,.72); --accent:#45d6bd; --bar:rgba(16,20,30,.62)}}
+:root[data-theme="dark"]{
+  --bg:#05070d; --surface:rgba(255,255,255,.07); --fill:rgba(255,255,255,.07); --fill2:rgba(255,255,255,.13);
+  --line:rgba(255,255,255,.09); --seg-on:rgba(255,255,255,.2); --sheet:rgba(22,25,34,.72);
+  --glass-edge:rgba(255,255,255,.16); --glass-hi:inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05);
+  --glass-sheen:linear-gradient(140deg,rgba(255,255,255,.12) 0%,rgba(255,255,255,.02) 45%,rgba(255,255,255,0) 60%,rgba(255,255,255,.05) 100%);
+  --shadow:0 12px 34px rgba(0,0,0,.35);
+  --blob1:#0b7f77; --blob2:#1a4fb8; --blob3:#8a4a1d; --blob4:#43299c; --toast:rgba(40,44,56,.72); --accent:#45d6bd; --bar:rgba(16,20,30,.62)}
+
+/* Backdrop: soft drifting colour fields the glass refracts */
+body{background:transparent}
+body::before{content:"";position:fixed;inset:-15%;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(38% 32% at 12% 8%,var(--blob1) 0,transparent 70%),
+    radial-gradient(42% 36% at 92% 18%,var(--blob2) 0,transparent 70%),
+    radial-gradient(46% 40% at 78% 88%,var(--blob3) 0,transparent 70%),
+    radial-gradient(44% 38% at 8% 78%,var(--blob4) 0,transparent 70%),
+    var(--bg);
+  animation:drift 40s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(3%,-2%,0) scale(1.06)}}
+
+/* Glass surfaces */
+.card,.group,.tile,.h-empty,.icon-btn,.rec-hero,.inline input,
+.btn:not(.primary):not(.plain):not(.tinted),.seg{
+  background:var(--glass-sheen),var(--surface);
+  -webkit-backdrop-filter:blur(22px) saturate(175%);backdrop-filter:blur(22px) saturate(175%);
+  border:1px solid var(--glass-edge);box-shadow:var(--glass-hi),var(--shadow)}
+.seg{box-shadow:var(--glass-hi);padding:3px;border-radius:13px}
+.seg button{border-radius:10px}
+.seg button[aria-pressed="true"]{background:var(--seg-on);box-shadow:0 2px 8px rgba(20,30,60,.12),inset 0 1px 0 rgba(255,255,255,.6)}
+.btn.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 78%,#fff),var(--accent) 55%,color-mix(in srgb,var(--accent) 88%,#000));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(0,0,0,.12),0 8px 22px color-mix(in srgb,var(--accent) 35%,transparent);border:1px solid color-mix(in srgb,var(--accent) 70%,#fff)}
+.btn.tinted{background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.icon-btn{border:1px solid var(--glass-edge)}
+.stats{background:var(--fill);border:1px solid var(--line)}
+.row input:focus{background:var(--fill)}
+.mini{background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 20%,transparent)}
+.dmy input{border:1px solid var(--line)}
+.vf{border:1px solid rgba(255,255,255,.35);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),var(--shadow)}
+.vf-idle{background:radial-gradient(120% 90% at 50% 0%,rgba(40,120,110,.55),rgba(8,14,20,.92) 70%),#0a0f14}
+.empty-ic{background:var(--glass-sheen),color-mix(in srgb,var(--accent) 16%,transparent);border:1px solid var(--glass-edge);box-shadow:var(--glass-hi)}
+.v-label{border:1px solid color-mix(in srgb,var(--tone) 25%,transparent)}
+.tabbar{background:var(--glass-sheen),var(--bar);border-top:1px solid var(--glass-edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.4);
+  -webkit-backdrop-filter:blur(26px) saturate(180%);backdrop-filter:blur(26px) saturate(180%)}
+@media (max-width:899px){
+  .tabbar{left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));
+    padding:4px 8px;border-radius:26px;border:1px solid var(--glass-edge);box-shadow:var(--glass-hi),0 12px 30px rgba(20,30,60,.18)}
+  .toast{bottom:calc(92px + env(safe-area-inset-bottom))}
+}
+.toast{background:var(--toast);-webkit-backdrop-filter:blur(24px) saturate(180%);backdrop-filter:blur(24px) saturate(180%);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 30px rgba(0,0,0,.25)}
+dialog.sheet{background:var(--sheet);-webkit-backdrop-filter:blur(40px) saturate(180%);backdrop-filter:blur(40px) saturate(180%);
+  border:1px solid var(--glass-edge);box-shadow:var(--glass-hi),0 30px 80px rgba(0,0,0,.3)}
+dialog.sheet::backdrop{background:rgba(10,15,30,.28);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.sheet-head{background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:1px solid var(--line)}
+.eyebrow img{box-shadow:0 2px 6px rgba(20,40,90,.25)}
+.item .open:hover{background:rgba(255,255,255,.18)}
+textarea{background:var(--surface);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+@media (prefers-reduced-transparency:reduce){
+  :root{--surface:rgba(255,255,255,.94);--sheet:rgba(246,248,252,.98)}
+}
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
