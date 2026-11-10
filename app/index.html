@@ -122,6 +122,7 @@ body[data-mode="manual"] .vf:not(.on){display:none}
 .actions{display:grid;grid-template-columns:1.6fr 1fr;gap:10px}
 .note{font-size:15px;color:var(--muted);text-align:center;padding:0 8px}
 .note.err{color:var(--bad)}
+.note:empty{display:none}
 .foot-note{display:flex;gap:6px;align-items:center;justify-content:center;font-size:13px;color:var(--faint);padding:4px 0}
 .foot-note .ic{width:15px;height:15px}
 
@@ -429,7 +430,6 @@ h1,h2,h3{letter-spacing:-.025em}
           <path class="beam" d="M30 65h140"/>
         </svg>
         <b>Tap to scan</b>
-        <span>DataMatrix · GS1-128 · EAN/UPC · QR</span>
       </button>
       <button class="vf-close" id="vfClose" type="button" aria-label="Stop camera" data-ic="close"></button>
     </div>
@@ -439,10 +439,10 @@ h1,h2,h3{letter-spacing:-.025em}
       <label class="btn" data-ic="photo">Photo<input id="photo" type="file" accept="image/*"></label>
     </div>
 
-    <p class="note" id="camMsg" role="status">Hold the code 10–15 cm from the camera.</p>
+    <p class="note" id="camMsg" role="status"></p>
 
     <details class="paste" id="pasteBox">
-      <summary>Paste or type a code instead</summary>
+      <summary>Paste a code</summary>
       <form class="inline" id="manualForm">
         <input id="manualInput" placeholder="(01)…(17)271130(10)AB12" aria-label="Code text" autocomplete="off" spellcheck="false">
         <button class="btn primary small" type="submit">Read</button>
@@ -484,7 +484,7 @@ h1,h2,h3{letter-spacing:-.025em}
             <span class="mini" title="Pick from calendar" data-ic="calendar"><input type="date" id="enMfgPick" aria-label="Pick manufacture date from calendar" tabindex="-1"></span>
           </li>
         </ul>
-        <p class="group-foot">Leave the day empty for month-only dates (e.g. EXP 11/2027); they count as the last day of the month. Add the manufacture date to see % shelf life left.</p>
+        <p class="group-foot">Day is optional.</p>
       </div>
       <div class="actions">
         <button class="btn primary" type="submit">Check</button>
@@ -494,7 +494,6 @@ h1,h2,h3{letter-spacing:-.025em}
 
     <section class="card" id="result" aria-live="polite" aria-label="Result"></section>
 
-    <p class="foot-note" data-ic="lock">Everything stays on this device · Lumetis Pharma</p>
   </section>
 
   <section class="view" id="viewHistory" aria-labelledby="hTitle">
@@ -538,7 +537,7 @@ h1,h2,h3{letter-spacing:-.025em}
         <label class="row" for="minPct"><span class="grow">Minimum shelf life left</span><span class="num"><input id="minPct" type="number" inputmode="numeric" min="0" max="100" value="60"><i>%</i></span></label>
         <label class="row" for="nearMonths"><span class="grow">Warn when expiring within</span><span class="num"><input id="nearMonths" type="number" inputmode="numeric" min="0" max="60" value="6"><i>mo</i></span></label>
       </div>
-      <p class="group-foot">Match these to your organisation’s receiving SOP. The minimum % is checked only when a manufacture date is known.</p>
+      <p class="group-foot">Minimum % needs a manufacture date.</p>
     </div>
     <div>
       <p class="group-title">Products</p>
@@ -549,7 +548,7 @@ h1,h2,h3{letter-spacing:-.025em}
           <button class="btn small tinted" type="button" id="prodCopy">Copy list</button>
         </div>
       </div>
-      <p class="group-foot" id="prodMsg">Import a CSV with a GTIN (or Barcode) column and a Description (or Product name) column. Names you type for unknown packs are remembered here.</p>
+      <p class="group-foot" id="prodMsg">CSV with GTIN and Description columns.</p>
       <textarea id="prodBox" rows="4" hidden readonly aria-label="Product list CSV" style="margin-top:8px"></textarea>
     </div>
     <div>
@@ -566,8 +565,7 @@ h1,h2,h3{letter-spacing:-.025em}
     </div>
     <div>
       <p class="group-title">Privacy</p>
-      <div class="group"><p class="privacy" data-ic="lock">Your history, product names and settings are saved only in this browser on this device. Nothing is uploaded. The camera is used only while you scan, and turns off when you leave the Check tab.</p></div>
-      <p class="group-foot">Dates are read per the GS1 General Specifications (YYMMDD). Older labels that use day “00” are read as the last day of the month.</p>
+      <div class="group"><p class="privacy" data-ic="lock">Stored only on this device. Nothing is uploaded.</p></div>
     </div>
     <div>
       <p class="group-title">About</p>
@@ -576,7 +574,7 @@ h1,h2,h3{letter-spacing:-.025em}
           <span class="grow"><b style="font-weight:600">Shelf Life Scanner</b><br><span class="valtext" style="font-size:14px">by Lumetis Pharma</span></span></div>
         <div class="btn-row" style="padding-top:0"><a class="btn small tinted" href="../#faq">Help &amp; FAQ</a><a class="btn small tinted" href="../#privacy">Privacy</a><a class="btn small tinted" href="../#disclaimer">Disclaimer</a></div>
       </div>
-      <p class="group-foot">Tip: add this page to your home screen (Share → Add to Home Screen on iPhone, or ⋮ → Add to Home screen on Android) to open it like an app.</p>
+      <p class="group-foot">Tip: Add to Home Screen to open it like an app.</p>
     </div>
   </div>
 </dialog>
@@ -746,9 +744,8 @@ function render(){
   if (!current){
     el.innerHTML = `<div class="empty">
       <div class="empty-ic">${ic("box")}</div>
-      <h2>Ready when you are</h2>
-      <p>Scan a pack or type its dates to see how much shelf life is left.</p>
-      <button class="btn plain" type="button" id="exBtn">See an example</button></div>`;
+      <h2>Scan a pack to start</h2>
+      <button class="btn plain" type="button" id="exBtn">See example</button></div>`;
     $("exBtn").onclick = () => handle(EXAMPLE, "DATA_MATRIX", true);
     return;
   }
@@ -756,12 +753,10 @@ function render(){
   const gt = a["01"], prod = product(gt);
   const name = prod?.d || current.name || (gt ? "Unknown product" : current.kind==="Non-GS1 code" ? "Not a GS1 code" : "Pack");
   const icon = {ok:"check", warn:"alert", bad:"x", none:"calendar"}[ev.status];
-  let sub;
-  if (ev.status==="none") sub = current.kind==="Non-GS1 code" ? "This code has no product or date data. Add the expiry date below." : "No expiry in this code. Add it from the pack label below.";
-  else if (ev.days<0) sub = `Expired ${fmtD(current.exp)}. Do not accept.`;
-  else if (ev.status==="bad") sub = `${ev.pct.toFixed(0)}% shelf life left, below your ${r.minPct}% minimum.`;
-  else if (ev.status==="warn") sub = `Expires ${fmtD(current.exp)}, inside your ${r.nearMonths}-month window.`;
-  else sub = `Expires ${fmtD(current.exp)}. Meets your receiving rules.`;
+  /* Short reason only where the label alone doesn't say it */
+  let sub = "";
+  if (ev.status==="none") sub = "Add the expiry date below.";
+  else if (ev.status==="bad" && ev.days>=0) sub = `Minimum is ${r.minPct}%.`;
   const frac = ev.days==null ? 0 : ev.pct!=null ? ev.pct/100 : ev.days<0 ? 0 : Math.min(1, ev.months/Math.max(12, r.nearMonths*2));
   const off = RING_C*(1-frac), start = current.fresh && !reduceMotion ? RING_C : off;
   const centre = ev.days==null ? `<b>—</b><span>no date</span>` : `<b>${Math.abs(ev.days)}</b><span>${ev.days<0?"days ago":ev.days===1?"day left":"days left"}</span>`;
@@ -785,7 +780,7 @@ function render(){
       <div class="v-text">
         <p class="v-label">${ic(icon)}${esc(ev.label)}</p>
         <h2 class="v-prod">${esc(name)}</h2>
-        <p class="v-sub">${esc(sub)}</p>
+        ${sub?`<p class="v-sub">${esc(sub)}</p>`:""}
       </div>
     </div>
     ${ev.days!=null?`<div class="stats">
@@ -848,7 +843,7 @@ function renderLog(){
   $("logCount").textContent=log.length; $("hActions").hidden=!log.length;
   const rows = log.filter(r=> filter==="all" || ["warn","bad"].includes(statusOf(r.status)));
   if (!rows.length){
-    $("logList").innerHTML = `<div class="h-empty">${log.length ? "Nothing needs attention. Every pack met your rules." : "Packs you check are saved here, so you can export them later."}</div>`;
+    $("logList").innerHTML = `<div class="h-empty">${log.length ? "Nothing flagged." : "No checks yet."}</div>`;
     return;
   }
   let html="", last="";
@@ -933,7 +928,7 @@ function openRecord(id){
         ${row("Manufactured", mfg ? fmtD(mfg) : "Not recorded")}
         ${row("Days left", days==null ? "—" : days<0 ? Math.abs(days)+" days past expiry" : String(days))}
         ${row("Months left", days==null ? "—" : Math.max(0, days/30.4375).toFixed(1))}
-        ${row("Shelf life left", pct==null ? "— (needs manufacture date)" : pct+"%")}
+        ${row("Shelf life left", pct==null ? "—" : pct+"%")}
         ${row("Result", r.status)}
       </div>
     </div>
@@ -1101,8 +1096,7 @@ function fillEntry(text, format){
   buzz("ok");
   if (running) stopCam();
   const got = [($("enGtin").value)?"barcode":"", a["10"]?"batch":"", e?"expiry":"", m?"manufacture date":""].filter(Boolean);
-  say(got.length ? `Filled ${got.join(", ")}. ${e ? "Review and tap Check." : "Now type the expiry date."}`
-                 : "That code holds no barcode number or dates. Type the details instead.", !got.length);
+  say(got.length ? (e ? "" : "Add the expiry date.") : "No data in that code.", !got.length);
   (e ? $("entryForm").querySelector("[type=submit]") : $("enExpD")).focus();
 }
 
@@ -1119,7 +1113,7 @@ $("entryForm").addEventListener("submit", e=>{
   current = {raw, format:"", kind:"Manual entry", ais, name:(!gt && name) ? name : "", exp, mfg, example:false, logged:false, fresh:true};
   buzz(evaluate(exp, mfg, rules()).status);
   addToLog();
-  say("Tap Next pack when you’re ready.");
+  say("");
   resetEntry();
   revealResult();
 });
@@ -1131,7 +1125,7 @@ function resetEntry(){
 $("enClear").onclick = ()=>{ resetEntry(); $("enGtin").focus(); };
 $("enScan").onclick = ()=>toggleCam();
 
-const MSG = {scan:"Hold the code 10–15 cm from the camera.", manual:"Type the dates from the label, or tap the camera to fill from the barcode."};
+const MSG = {scan:"", manual:""};
 function setMode(m){
   mode = m; store.set("sls_mode", m); document.body.dataset.mode = m;
   $("modeScan").setAttribute("aria-pressed", String(m==="scan")); $("modeManual").setAttribute("aria-pressed", String(m==="manual"));
@@ -1193,8 +1187,8 @@ function onScan(text, format){
   handle(text, format||"");
 }
 function say(t, err=false){ const m=$("camMsg"); m.textContent=t; m.className= err?"note err":"note"; }
-const NO_ENGINE = "The scanner couldn’t load and this browser has no built-in reader. Check your connection and reload, or type the code instead.";
-const CAM_BLOCKED = "Camera access is off. Allow it in your browser settings, or use Photo instead.";
+const NO_ENGINE = "Scanner unavailable. Use Type instead.";
+const CAM_BLOCKED = "Camera blocked. Allow it, or use Photo.";
 function setCamUI(on){
   running = on; $("vf").classList.toggle("on", on);
   $("camBtn").querySelector("span").textContent = on ? "Stop camera" : "Start camera";
@@ -1209,7 +1203,7 @@ async function stopCam(){
 async function toggleCam(){
   if (starting) return;
   if (running) return stopCam();
-  starting = true; say("Starting camera…");
+  starting = true; say("");
   try{
     const hasLib = await libReady;
     $("vf").classList.add("on");
@@ -1218,7 +1212,7 @@ async function toggleCam(){
       try{
         await scanner.start({facingMode:"environment"}, {fps:12, qrbox:(w,h)=>{const s=Math.floor(Math.min(w,h)*0.7);return {width:s,height:Math.floor(s*0.75)}}, aspectRatio:1.333},
           (t,r)=>onScan(t, r?.result?.format?.formatName), ()=>{});
-        engine="lib"; setCamUI(true); say(mode==="manual" ? "Point at the barcode." : "Hold the code inside the box.");
+        engine="lib"; setCamUI(true); say("");
       }catch{ setCamUI(false); say(CAM_BLOCKED, true); }
       return;
     }
@@ -1228,7 +1222,7 @@ async function toggleCam(){
       nativeStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment", width:{ideal:1280}}});
       const v=document.createElement("video"); v.setAttribute("playsinline",""); v.muted=true; v.srcObject=nativeStream;
       $("reader").innerHTML=""; $("reader").appendChild(v); await v.play();
-      engine="native"; setCamUI(true); say(mode==="manual" ? "Point at the barcode." : "Hold the code in view.");
+      engine="native"; setCamUI(true); say("");
       let busy=false;
       nativeTimer=setInterval(async()=>{
         if (busy||v.readyState<2) return; busy=true;
@@ -1281,12 +1275,12 @@ async function decodePhoto(file){
 }
 async function onPhoto(e){
   const f=e.target.files?.[0]; if(!f) return;
-  say("Reading photo…");
+  say("Reading…");
   try{
     const r = await decodePhoto(f);
-    if (r){ lastText=""; onScan(r.text, r.format); if (mode!=="manual") say("Read from photo."); }
-    else say("No code found. Fill the frame with the code, keep it sharp, and avoid glare.", true);
-  }catch(err){ say(err?.message==="noengine" ? NO_ENGINE : "Couldn’t open that photo. Try a JPG or PNG.", true); }
+    if (r){ lastText=""; onScan(r.text, r.format); say(""); }
+    else say("No code found. Try a closer photo.", true);
+  }catch(err){ say(err?.message==="noengine" ? NO_ENGINE : "Couldn’t open that photo.", true); }
   finally{ e.target.value=""; }
 }
 $("photo").addEventListener("change", onPhoto);
